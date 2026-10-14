@@ -3,6 +3,7 @@ package com.movievortex.android.controller
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lagradost.cloudstream3.APIHolder
+import com.lagradost.cloudstream3.MainActivity
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.ui.APIRepository
@@ -32,6 +33,12 @@ class AnimeController : ViewModel() {
     private var animePage = 1
 
     init {
+        loadAnimeContent()
+        MainActivity.mainPluginsLoadedEvent += ::onPluginsLoaded
+        MainActivity.afterPluginsLoadedEvent += ::onPluginsLoaded
+    }
+
+    private fun onPluginsLoaded(success: Boolean) {
         loadAnimeContent()
     }
 
@@ -125,5 +132,11 @@ class AnimeController : ViewModel() {
 
             _uiState.value = _uiState.value.copy(isExploreLoading = false)
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        MainActivity.mainPluginsLoadedEvent -= ::onPluginsLoaded
+        MainActivity.afterPluginsLoadedEvent -= ::onPluginsLoaded
     }
 }

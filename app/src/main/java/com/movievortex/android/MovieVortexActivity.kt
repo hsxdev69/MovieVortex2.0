@@ -24,12 +24,13 @@ class MovieVortexActivity : ComponentActivity() {
         // Initialize CloudStream Core infrastructure
         CommonActivity.setActivityInstance(this)
 
-        // Asynchronously load online & local providers in background
+        // Automatically bootstrap Phisher Repo and install AniVortex, IStreamFlare, MovieBoxProvider
         ioSafe {
             try {
-                PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins(this@MovieVortexActivity)
-                PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllLocalPlugins(this@MovieVortexActivity, false)
-            } catch (_: Exception) {}
+                com.movievortex.android.core.VortexPluginBootstrap.bootstrap(this@MovieVortexActivity)
+            } catch (e: Exception) {
+                android.util.Log.e("MovieVortexActivity", "Plugin bootstrap error", e)
+            }
         }
 
         val settingsController = SettingsController(applicationContext)

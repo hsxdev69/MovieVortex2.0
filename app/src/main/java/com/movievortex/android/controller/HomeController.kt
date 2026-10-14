@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.HomePageList
+import com.lagradost.cloudstream3.MainActivity
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.TvType
@@ -56,6 +57,12 @@ class HomeController : ViewModel() {
 
     init {
         loadHomeContent()
+        MainActivity.mainPluginsLoadedEvent += ::onPluginsLoaded
+        MainActivity.afterPluginsLoadedEvent += ::onPluginsLoaded
+    }
+
+    private fun onPluginsLoaded(success: Boolean) {
+        loadHomeContent(forceReload = true)
     }
 
     fun loadHomeContent(forceReload: Boolean = false) {
@@ -196,5 +203,11 @@ class HomeController : ViewModel() {
 
             _uiState.value = _uiState.value.copy(isExploreLoading = false)
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        MainActivity.mainPluginsLoadedEvent -= ::onPluginsLoaded
+        MainActivity.afterPluginsLoadedEvent -= ::onPluginsLoaded
     }
 }

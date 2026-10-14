@@ -98,7 +98,15 @@ data class PluginWrapper(
 object RepositoryManager {
     const val ONLINE_PLUGINS_FOLDER = "Extensions"
     val PREBUILT_REPOSITORIES: Array<RepositoryData> by lazy {
-        getKey<Array<RepositoryData>>("PREBUILT_REPOSITORIES") ?: emptyArray()
+        val current = getKey<Array<RepositoryData>>("PREBUILT_REPOSITORIES")
+        if (current.isNullOrEmpty()) {
+            arrayOf(
+                RepositoryData(
+                    name = "Phisher Repo",
+                    url = "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/refs/heads/builds/repo.json"
+                )
+            )
+        } else current
     }
     private val GH_REGEX =
         Regex("^https://raw.githubusercontent.com/([A-Za-z0-9-]+)/([A-Za-z0-9_.-]+)/(.*)$")
@@ -240,7 +248,18 @@ object RepositoryManager {
     }
 
     fun getRepositories(): Array<RepositoryData> {
-        return getKey<Array<RepositoryData>>(REPOSITORIES_KEY) ?: emptyArray()
+        val current = getKey<Array<RepositoryData>>(REPOSITORIES_KEY)
+        if (current.isNullOrEmpty()) {
+            val defaultRepos = arrayOf(
+                RepositoryData(
+                    name = "Phisher Repo",
+                    url = "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/refs/heads/builds/repo.json"
+                )
+            )
+            setKey(REPOSITORIES_KEY, defaultRepos)
+            return defaultRepos
+        }
+        return current
     }
 
     // Don't want to read before we write in another thread
