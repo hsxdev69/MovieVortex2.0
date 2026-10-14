@@ -141,12 +141,12 @@ class HomeController : ViewModel() {
 
                 list.add(
                     MovieVortexMedia(
-                        id = resumeItem,
+                        id = resumeItem.toString(),
                         title = title,
                         poster = poster,
                         backdrop = poster,
                         watchProgress = progress,
-                        rawUrl = resumeItem
+                        rawUrl = bookmarked?.url ?: resumeItem.toString()
                     )
                 )
             }
@@ -156,7 +156,9 @@ class HomeController : ViewModel() {
     }
 
     fun removeContinueWatching(media: MovieVortexMedia) {
-        DataStoreHelper.setViewPos(media.rawUrl, 0L, 0L)
+        val intId = media.rawUrl.toIntOrNull() ?: media.rawUrl.hashCode()
+        DataStoreHelper.setViewPos(intId, 0L, 0L)
+        DataStoreHelper.removeLastWatched(intId)
         _uiState.value = _uiState.value.copy(
             continueWatching = _uiState.value.continueWatching.filter { it.id != media.id }
         )

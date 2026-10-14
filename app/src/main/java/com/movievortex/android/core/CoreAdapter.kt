@@ -58,7 +58,6 @@ object CoreAdapter {
         val year = (response as? MovieSearchResponse)?.year
             ?: (response as? AnimeSearchResponse)?.year
             ?: (response as? TvSeriesSearchResponse)?.year
-            ?: (response as? TorrentSearchResponse)?.year
 
         val rating = response.score?.toFloat(10) ?: 0f
 
@@ -157,7 +156,7 @@ object CoreAdapter {
     fun fromEpisode(ep: Episode, parentUrl: String): MediaEpisode {
         val sNum = ep.season ?: 1
         val epNum = ep.episode ?: 1
-        val epResume = DataStoreHelper.getViewPos(ep.id ?: ep.data.hashCode())
+        val epResume = DataStoreHelper.getViewPos(ep.data.hashCode())
         val epProgress = if (epResume != null && epResume.duration > 0) {
             (epResume.position.toFloat() / epResume.duration.toFloat()).coerceIn(0f, 1f)
         } else 0f

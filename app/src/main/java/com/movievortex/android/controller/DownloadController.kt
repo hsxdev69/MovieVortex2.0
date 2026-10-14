@@ -2,7 +2,6 @@ package com.movievortex.android.controller
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lagradost.cloudstream3.utils.downloader.DownloadManager
 import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager
 import com.movievortex.android.model.MediaDownloadState
 import com.movievortex.android.model.MediaType
@@ -42,25 +41,25 @@ class DownloadController : ViewModel() {
 
     fun loadDownloads() {
         viewModelScope.launch {
-            // Load current downloads from DownloadManager
-            val queue = DownloadQueueManager.currentQueue
+            val queue = DownloadQueueManager.queue.value
             val downloadItems = mutableListOf<DownloadUiItem>()
 
-            // Map queue to DownloadUiItems
-            queue.forEach { queueItem ->
-                val progress = if (queueItem.totalBytes > 0) {
-                    (queueItem.downloadedBytes.toFloat() / queueItem.totalBytes.toFloat()).coerceIn(0f, 1f)
-                } else 0f
+            queue.forEach { queueWrapper ->
+                val item = queueWrapper.downloadItem
+                val resumeEp = queueWrapper.resumePackage?.item?.ep
+                val id = queueWrapper.id
+                val title = item?.resultName ?: resumeEp?.mainName ?: resumeEp?.name ?: "Media Download"
+                val poster = item?.resultPoster ?: resumeEp?.poster
 
                 downloadItems.add(
                     DownloadUiItem(
-                        id = queueItem.key.toString(),
-                        title = queueItem.item.name,
-                        poster = queueItem.item.poster,
+                        id = id.toString(),
+                        title = title,
+                        poster = poster,
                         quality = "1080p",
-                        fileSizeBytes = queueItem.totalBytes,
-                        downloadedBytes = queueItem.downloadedBytes,
-                        progress = progress,
+                        fileSizeBytes = 0L,
+                        downloadedBytes = 0L,
+                        progress = 0f,
                         state = MediaDownloadState.Downloading
                     )
                 )
