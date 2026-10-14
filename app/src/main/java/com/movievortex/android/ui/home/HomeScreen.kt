@@ -255,121 +255,158 @@ fun FeaturedHero(
                 .background(VortexColors.HeroGradient)
         )
 
-        // Hero Details Content at bottom
+            // Hero Details Content at bottom
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomStart)
                 .padding(16.dp)
         ) {
-            // Type & Quality tags
+            // Faint MovieVortex brand text
+            Text(
+                text = "MovieVortex",
+                color = Color(0x66FFFFFF),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+
+            // Type & Multi tags (Screenshot_20261014_180728.jpg)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .background(VortexColors.CinematicRed, RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x33FFFFFF))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "FEATURED",
+                        text = "MOVIE",
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                activeItem.rating?.let { rating ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
                     Text(
-                        text = "★ %.1f".format(rating),
-                        color = VortexColors.WarmAmber,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                activeItem.year?.let { year ->
-                    Text(
-                        text = year.toString(),
-                        color = VortexColors.SecondaryText,
-                        fontSize = 12.sp
+                        text = "MULTI",
+                        color = Color.Black,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Title
             Text(
                 text = activeItem.title,
-                color = VortexColors.PrimaryText,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black,
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            activeItem.synopsis?.let { synopsis ->
-                Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Year and Rating: 2026 • ★ 6.3
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = synopsis,
-                    color = VortexColors.SecondaryText,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = "${activeItem.year ?: 2026}",
+                    color = Color(0xFFDDDDDD),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "  •  ",
+                    color = Color(0xFF888888),
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = "★ %.1f".format(activeItem.rating ?: 6.3f),
+                    color = Color(0xFFFFC107),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Hero Actions
+            // Hero Actions (White Play pill button, My List, Page indicator)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = { onPlayClick(activeItem) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VortexColors.CinematicRed
-                    ),
-                    shape = RoundedCornerShape(10.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = VortexIcons.Play,
-                        contentDescription = "Play",
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Play",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    // White pill Play button (Screenshot_20261014_180728.jpg)
+                    Button(
+                        onClick = { onPlayClick(activeItem) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = VortexIcons.Play,
+                            contentDescription = "Play",
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Play",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    // My List Button
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onMediaClick(activeItem) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = VortexIcons.BookmarkBorder,
+                            contentDescription = "My List",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "My List",
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
 
-                OutlinedButton(
-                    onClick = { onMediaClick(activeItem) },
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66FFFFFF)),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0x33000000)
-                    )
-                ) {
-                    Icon(
-                        imageVector = VortexIcons.Add,
-                        contentDescription = "My List",
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "My List",
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                }
+                // Page indicator (01 — 19)
+                val displayCurrent = (currentIndex + 1).coerceAtLeast(1)
+                val displayTotal = items.size.coerceAtLeast(1)
+                Text(
+                    text = "%02d ── %02d".format(displayCurrent, displayTotal),
+                    color = Color(0xFF888888),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
@@ -384,23 +421,23 @@ fun ContinueWatchingSection(
     Column {
         Text(
             text = "Continue Watching",
-            color = VortexColors.PrimaryText,
-            fontSize = 17.sp,
+            color = Color.White,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(items) { media ->
                 Box(
                     modifier = Modifier
                         .width(135.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable { onMediaClick(media) }
                 ) {
                     PosterCard(
@@ -414,7 +451,7 @@ fun ContinueWatchingSection(
                         onClick = { onRemove(media) },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .size(28.dp)
+                            .size(26.dp)
                             .padding(4.dp)
                             .background(Color(0x99000000), CircleShape)
                     ) {
@@ -422,7 +459,7 @@ fun ContinueWatchingSection(
                             imageVector = VortexIcons.Close,
                             contentDescription = "Remove",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }
@@ -436,53 +473,48 @@ fun PlatformShortcutsSection(
     platforms: List<StreamingPlatform>,
     onPlatformClick: (StreamingPlatform) -> Unit
 ) {
-    Column {
-        Text(
-            text = "Popular Streaming Networks",
-            color = VortexColors.PrimaryText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+    val ottPlatforms = listOf(
+        Pair("Prime Video", Color(0xFF00A8E1)),
+        Pair("Netflix", Color(0xFFE50914)),
+        Pair("Sony LIV", Color(0xFF6B21A8)),
+        Pair("Crunchyroll", Color(0xFFFF6400)),
+        Pair("JioHotstar", Color(0xFF1B4DFF)),
+        Pair("Zee5", Color(0xFF8250DF))
+    )
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(platforms) { platform ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable { onPlatformClick(platform) }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(VortexColors.CardSurface)
-                            .border(1.dp, VortexColors.BorderSubtle, RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = platform.name.take(3).uppercase(),
-                            color = Color(platform.primaryColor),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = platform.name,
-                        color = VortexColors.SecondaryText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(ottPlatforms) { (name, brandColor) ->
+            Box(
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(CircleShape)
+                    .background(brandColor)
+                    .clickable {
+                        val matched = platforms.firstOrNull { it.name.contains(name, ignoreCase = true) }
+                            ?: StreamingPlatform(name.lowercase(), name, "", 0xFF000000L, "")
+                        onPlatformClick(matched)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (name) {
+                        "Prime Video" -> "prime\nvideo"
+                        "Netflix" -> "N"
+                        "Sony LIV" -> "SONY\nliv"
+                        "Crunchyroll" -> "CR"
+                        "JioHotstar" -> "Jio\nHotstar"
+                        else -> "Z5"
+                    },
+                    color = Color.White,
+                    fontSize = if (name == "Netflix") 24.sp else 10.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 11.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
     }
@@ -503,17 +535,28 @@ fun ContentRowSection(
         ) {
             Text(
                 text = row.title,
-                color = VortexColors.PrimaryText,
+                color = Color.White,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            Text(
-                text = "More →",
-                color = VortexColors.CinematicRed,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { /* More */ }
+            ) {
+                Text(
+                    text = "More",
+                    color = Color(0xFFAAAAAA),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = VortexIcons.ChevronRight,
+                    contentDescription = "More",
+                    tint = Color(0xFFAAAAAA),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))

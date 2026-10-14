@@ -169,7 +169,8 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            launchCloudStreamPlayer(context, media)
+                                            playerController.initializePlayback(media)
+                                            currentScreen = AppScreen.Player(media)
                                         },
                                         onPlatformClick = { platform ->
                                             currentScreen = AppScreen.PlatformCatalog(platform)
@@ -185,7 +186,8 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            launchCloudStreamPlayer(context, media)
+                                            playerController.initializePlayback(media)
+                                            currentScreen = AppScreen.Player(media)
                                         }
                                     )
                                 }
@@ -240,10 +242,12 @@ fun MovieVortexNavGraph(
                 DetailScreen(
                     detailController = detailController,
                     onPlayMovie = { media ->
-                        launchCloudStreamPlayer(context, media)
+                        playerController.initializePlayback(media)
+                        currentScreen = AppScreen.Player(media)
                     },
                     onPlayEpisode = { media, ep ->
-                        launchCloudStreamPlayer(context, media, ep)
+                        playerController.initializePlayback(media, ep)
+                        currentScreen = AppScreen.Player(media, ep)
                     },
                     onDownloadClick = { media, ep ->
                         // Add to download queue
@@ -255,9 +259,21 @@ fun MovieVortexNavGraph(
             }
 
             is AppScreen.Player -> {
+                val homeState by homeController.uiState.collectAsState()
+                val recs = if (homeState.exploreGrid.isNotEmpty()) homeState.exploreGrid else homeState.heroItems
                 MovieVortexPlayerScreen(
                     playerController = playerController,
-                    onCloseClick = { currentScreen = AppScreen.Main }
+                    media = screen.media,
+                    recommendations = recs,
+                    onMediaClick = { recMedia ->
+                        detailController.loadMediaDetail(recMedia.rawUrl, recMedia.providerApiName, recMedia)
+                        playerController.initializePlayback(recMedia)
+                        currentScreen = AppScreen.Player(recMedia)
+                    },
+                    onCloseClick = { currentScreen = AppScreen.Detail(screen.media) },
+                    onPlayOnTvClick = {
+                        launchCloudStreamPlayer(context, screen.media, screen.episode)
+                    }
                 )
             }
         }

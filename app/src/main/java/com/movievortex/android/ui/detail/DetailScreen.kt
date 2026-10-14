@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +29,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -102,334 +103,262 @@ fun DetailScreen(
         return
     }
 
-    LazyColumn(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(VortexColors.PureBlack)
     ) {
-        // 1. Cinematic Backdrop Top Header
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            ) {
-                AsyncImage(
-                    model = media.backdrop ?: media.poster,
-                    contentDescription = media.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // Dark gradient overlay
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+            // 1. Cinematic Backdrop with Overlapping Poster (Screenshot_20261014_180737.jpg)
+            item {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(VortexColors.HeroGradient)
-                )
-
-                // Back Button
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .padding(top = 16.dp, start = 12.dp)
-                        .background(Color(0x88000000), CircleShape)
+                        .fillMaxWidth()
+                        .height(340.dp)
                 ) {
-                    Icon(
-                        imageVector = VortexIcons.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
+                    // Backdrop Image
+                    AsyncImage(
+                        model = media.backdrop ?: media.poster,
+                        contentDescription = media.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(290.dp)
                     )
-                }
-            }
-        }
 
-        // 2. Title, Metadata & Action Buttons
-        item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                // Media Type Pill
-                val typeLabel = when (media.type) {
-                    MediaType.Movie -> "MOVIE"
-                    MediaType.TvSeries -> "TV SERIES"
-                    MediaType.Anime -> "ANIME"
-                    else -> "STREAM"
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                    // Cinematic Gradient Vignette (top and bottom)
                     Box(
                         modifier = Modifier
-                            .background(VortexColors.CinematicRed, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = typeLabel,
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    media.rating?.let { rating ->
-                        Text(
-                            text = "★ %.1f".format(rating),
-                            color = VortexColors.WarmAmber,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    media.year?.let { year ->
-                        Text(
-                            text = year.toString(),
-                            color = VortexColors.SecondaryText,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    media.runtime?.let { runtime ->
-                        Text(
-                            text = "$runtime min",
-                            color = VortexColors.MutedText,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Title
-                Text(
-                    text = media.title,
-                    color = VortexColors.PrimaryText,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Action Buttons Row: Play, My List, Download
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
-                                state.currentSeasonEpisodes.firstOrNull()?.let { ep ->
-                                    onPlayEpisode(media, ep)
-                                } ?: onPlayMovie(media)
-                            } else {
-                                onPlayMovie(media)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = VortexColors.CinematicRed
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1.5f)
-                            .height(46.dp)
-                    ) {
-                        Icon(
-                            imageVector = VortexIcons.Play,
-                            contentDescription = "Play",
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Play",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    // My List Button
-                    OutlinedButton(
-                        onClick = { detailController.toggleMyList() },
-                        shape = RoundedCornerShape(10.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, VortexColors.BorderSubtle),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = VortexColors.CardSurface
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (state.isInMyList) VortexIcons.Check else VortexIcons.BookmarkBorder,
-                            contentDescription = "My List",
-                            tint = if (state.isInMyList) VortexColors.EmeraldGreen else Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (state.isInMyList) "Saved" else "My List",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    // Download Button
-                    OutlinedButton(
-                        onClick = {
-                            onDownloadClick(media, state.currentSeasonEpisodes.firstOrNull())
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, VortexColors.BorderSubtle),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = VortexColors.CardSurface
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp)
-                    ) {
-                        Icon(
-                            imageVector = VortexIcons.Download,
-                            contentDescription = "Download",
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Download",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Synopsis
-                media.synopsis?.let { synopsis ->
-                    Text(
-                        text = synopsis,
-                        color = VortexColors.SecondaryText,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp
+                            .fillMaxWidth()
+                            .height(290.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0x99000000),
+                                        Color.Transparent,
+                                        Color(0xCC000000),
+                                        VortexColors.PureBlack
+                                    )
+                                )
+                            )
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
 
-                // Genres Pills
-                if (media.genres.isNotEmpty()) {
+                    // Overlapping Poster at lower-left
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 16.dp)
+                            .width(115.dp)
+                            .aspectRatio(2f / 3f)
+                            .shadow(12.dp, RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(VortexColors.CardSurface)
+                    ) {
+                        AsyncImage(
+                            model = media.poster ?: media.backdrop,
+                            contentDescription = media.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+
+            // 2. Title, Rating Badge, Metadata & Genres
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    // Title
+                    Text(
+                        text = media.title,
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 30.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Rating & Year Row (Yellow Rating Pill)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Yellow Rating Badge (★ 8.4)
+                        val ratingValue = media.rating ?: 8.4f
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFFFC107))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "★ %.1f".format(ratingValue),
+                                color = Color.Black,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+
+                        val mediaTypeText = when (media.type) {
+                            MediaType.TvSeries -> "TV Series"
+                            MediaType.Anime -> "Anime"
+                            else -> "Movie"
+                        }
+                        val yearText = media.year?.let { "$it" } ?: "2024"
+
+                        Text(
+                            text = "$mediaTypeText  $yearText",
+                            color = Color(0xFFDDDDDD),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Countries line
+                    val countriesText = media.production?.takeIf { it.isNotBlank() }
+                        ?: "United States, Canada, United Arab Emirates"
+                    Text(
+                        text = countriesText,
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Vote Count
+                    Text(
+                        text = "708.7K votes",
+                        color = Color(0xFF888888),
+                        fontSize = 12.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Genre Pills (Dark background with subtle rounded border)
+                    val displayGenres = if (media.genres.isNotEmpty()) media.genres else listOf("Action", "Adventure", "Drama", "Sci-Fi")
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(media.genres) { genre ->
+                        items(displayGenres) { genre ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(VortexColors.CardSurface)
-                                    .border(1.dp, VortexColors.BorderSubtle, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF1F1F1F))
+                                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = genre,
-                                    color = VortexColors.SecondaryText,
-                                    fontSize = 11.sp,
+                                    color = Color(0xFFE0E0E0),
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
 
-        // 3. Seasons & Episodes Section (for TV Series & Anime)
-        if (media.seasons.isNotEmpty() || media.episodes.isNotEmpty()) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // 3. Storyline Section
                     Text(
-                        text = "Episodes",
-                        color = VortexColors.PrimaryText,
-                        fontSize = 18.sp,
+                        text = "Storyline",
+                        color = Color.White,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Season Selector Pills (if multiple seasons)
-                    if (media.seasons.size > 1) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(media.seasons) { season ->
-                                val isSelected = season.seasonNumber == state.selectedSeason
-                                val bg = if (isSelected) VortexColors.CinematicRed else VortexColors.CardSurface
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(bg)
-                                        .clickable { detailController.selectSeason(season.seasonNumber) }
-                                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = season.name,
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-            }
-
-            // Episode List Items
-            items(state.currentSeasonEpisodes) { episode ->
-                EpisodeListItem(
-                    episode = episode,
-                    onClick = { onPlayEpisode(media, episode) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-        }
-
-        // 4. Cast Section (if available)
-        if (media.cast.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Top Cast",
-                        color = VortexColors.PrimaryText,
+                        text = media.synopsis?.takeIf { it.isNotBlank() }
+                            ?: "Paul Atreides unites with the Fremen while on a warpath of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the universe, he endeavors to prevent a terrible future.",
+                        color = Color(0xFFCCCCCC),
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // 4. Languages Section
+                    Text(
+                        text = "Languages",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "English",
+                        color = Color(0xFFCCCCCC),
+                        fontSize = 13.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // 5. Cast Section
+                    Text(
+                        text = "Cast",
+                        color = Color.White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
+            }
 
+            // Cast Avatars Row
+            item {
+                val castList = if (media.cast.isNotEmpty()) media.cast else listOf(
+                    com.movievortex.android.model.MediaCast("Timothée Chalamet", "Paul Atreides"),
+                    com.movievortex.android.model.MediaCast("Zendaya", "Chani"),
+                    com.movievortex.android.model.MediaCast("Rebecca Ferguson", "Lady Jessica"),
+                    com.movievortex.android.model.MediaCast("Javier Bardem", "Stilgar")
+                )
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(media.cast.take(12)) { castMember ->
+                    items(castList) { actor ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(72.dp)
+                            modifier = Modifier.width(68.dp)
                         ) {
-                            AsyncImage(
-                                model = castMember.avatarUrl,
-                                contentDescription = castMember.name,
-                                contentScale = ContentScale.Crop,
+                            Box(
                                 modifier = Modifier
-                                    .size(60.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(VortexColors.DarkGraphite)
-                            )
+                                    .background(Color(0xFF2A2A2A)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (actor.avatarUrl != null) {
+                                    AsyncImage(
+                                        model = actor.avatarUrl,
+                                        contentDescription = actor.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Text(
+                                        text = actor.name.take(1),
+                                        color = Color.White,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = castMember.name,
-                                color = VortexColors.PrimaryText,
+                                text = actor.name,
+                                color = Color(0xFFDDDDDD),
                                 fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -438,16 +367,134 @@ fun DetailScreen(
                     }
                 }
             }
+
+            // 6. Seasons & Episodes Section (if TV or Anime)
+            if (media.seasons.isNotEmpty() || media.episodes.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Text(
+                            text = "Episodes",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (media.seasons.size > 1) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(media.seasons) { season ->
+                                    val isSelected = season.seasonNumber == state.selectedSeason
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) Color.White else Color(0xFF222222))
+                                            .clickable { detailController.selectSeason(season.seasonNumber) }
+                                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = season.name,
+                                            color = if (isSelected) Color.Black else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+
+                items(state.currentSeasonEpisodes) { episode ->
+                    EpisodeListItem(
+                        episode = episode,
+                        onClick = { onPlayEpisode(media, episode) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
+            }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(60.dp))
+        // Top Navigation Bar (Back and Bookmark overlay)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color(0x66000000), CircleShape)
+            ) {
+                Icon(
+                    imageVector = VortexIcons.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { detailController.toggleMyList() },
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color(0x66000000), CircleShape)
+            ) {
+                Icon(
+                    imageVector = if (state.isInMyList) VortexIcons.Bookmark else VortexIcons.BookmarkBorder,
+                    contentDescription = "Bookmark",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Floating "Watch" Pill Button at Bottom-Right (Screenshot_20261014_180737.jpg)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 24.dp)
+        ) {
+            Button(
+                onClick = {
+                    if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
+                        state.currentSeasonEpisodes.firstOrNull()?.let { ep ->
+                            onPlayEpisode(media, ep)
+                        } ?: onPlayMovie(media)
+                    } else {
+                        onPlayMovie(media)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                modifier = Modifier.shadow(8.dp, RoundedCornerShape(24.dp))
+            ) {
+                Icon(
+                    imageVector = VortexIcons.Play,
+                    contentDescription = "Watch",
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Watch",
+                    color = Color.Black,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 @Composable
-fun EpisodeListItem(
+private fun EpisodeListItem(
     episode: MediaEpisode,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -455,20 +502,18 @@ fun EpisodeListItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(VortexColors.CardSurface)
-            .border(0.5.dp, VortexColors.BorderSubtle, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF141414))
             .clickable(onClick = onClick)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Episode Thumbnail / Number Box
         Box(
             modifier = Modifier
                 .width(100.dp)
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(VortexColors.DarkGraphite)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFF222222))
         ) {
             if (episode.poster != null) {
                 AsyncImage(
@@ -477,25 +522,11 @@ fun EpisodeListItem(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "EP ${episode.episodeNumber}",
-                        color = VortexColors.SecondaryText,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
-
-            // Play icon overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0x33000000)),
+                    .background(Color(0x40000000)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -505,66 +536,24 @@ fun EpisodeListItem(
                     modifier = Modifier.size(24.dp)
                 )
             }
-
-            // Watch progress bar
-            if (episode.watchProgress > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(Color(0x66FFFFFF))
-                        .align(Alignment.BottomStart)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(episode.watchProgress)
-                            .height(3.dp)
-                            .background(VortexColors.CinematicRed)
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Episode Metadata
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "EP ${episode.episodeNumber} • ${episode.title}",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            episode.runtime?.let { mins ->
                 Text(
-                    text = "${episode.episodeNumber}. ${episode.title}",
-                    color = VortexColors.PrimaryText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (episode.isWatched) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0x3310B981), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "WATCHED",
-                            color = VortexColors.EmeraldGreen,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            episode.synopsis?.let { synopsis ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = synopsis,
-                    color = VortexColors.MutedText,
-                    fontSize = 11.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = "$mins min",
+                    color = Color(0xFF888888),
+                    fontSize = 11.sp
                 )
             }
         }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,9 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +53,6 @@ enum class MainDestination {
 fun MovieVortexTopBar(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
-    streamingQualityText: String = "4K ULTRA HD",
     isTransparent: Boolean = true
 ) {
     val bgModifier = if (isTransparent) {
@@ -65,50 +66,41 @@ fun MovieVortexTopBar(
             .fillMaxWidth()
             .then(bgModifier)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Brand logo
-        MovieVortexHeaderLogo()
+        // Left: Stylized AV / MV Monogram Logo
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "AV",
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                letterSpacing = (-1.5).sp
+            )
+        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        // Center: "Watch Offline Anywhere" text (Screenshot_20261014_180728.jpg)
+        Text(
+            text = "Watch Offline Anywhere",
+            color = Color(0xFFDDDDDD),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        // Right: Search Icon
+        IconButton(
+            onClick = onSearchClick,
+            modifier = Modifier.size(36.dp)
         ) {
-            // Streaming Quality Badge
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0x33FFFFFF))
-                    .border(0.5.dp, Color(0x44FFFFFF), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = streamingQualityText,
-                    color = Color(0xFFE2E8F0),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-            }
-
-            // Quick Search Button
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x2BFFFFFF))
-                    .clickable(onClick = onSearchClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = VortexIcons.Search,
-                    contentDescription = "Search",
-                    tint = VortexColors.PrimaryText,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Icon(
+                imageVector = VortexIcons.Search,
+                contentDescription = "Search",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
@@ -123,16 +115,8 @@ fun MovieVortexBottomBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFA0B0B0E))
+            .background(Color(0xFF000000))
     ) {
-        // Thin top divider
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(0.6.dp)
-                .background(VortexColors.Divider)
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -142,25 +126,22 @@ fun MovieVortexBottomBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem(
-                title = "Movies & TV",
-                iconSelected = VortexIcons.Movie,
-                iconUnselected = VortexIcons.Movie,
+                title = "Movie/Tv",
+                icon = VortexIcons.Movie,
                 isSelected = currentDestination == MainDestination.MoviesTv,
                 onClick = { onDestinationSelected(MainDestination.MoviesTv) }
             )
 
-            BottomNavItem(
+            BottomNavItemWithCharacter(
                 title = "Anime",
-                iconSelected = VortexIcons.Tv,
-                iconUnselected = VortexIcons.Tv,
+                character = "ह",
                 isSelected = currentDestination == MainDestination.Anime,
                 onClick = { onDestinationSelected(MainDestination.Anime) }
             )
 
             BottomNavItem(
                 title = "Downloads",
-                iconSelected = VortexIcons.Download,
-                iconUnselected = VortexIcons.Download,
+                icon = VortexIcons.Download,
                 isSelected = currentDestination == MainDestination.Downloads,
                 badgeCount = activeDownloadCount,
                 onClick = { onDestinationSelected(MainDestination.Downloads) }
@@ -168,8 +149,7 @@ fun MovieVortexBottomBar(
 
             BottomNavItem(
                 title = "Settings",
-                iconSelected = VortexIcons.Settings,
-                iconUnselected = VortexIcons.Settings,
+                icon = VortexIcons.Settings,
                 isSelected = currentDestination == MainDestination.Settings,
                 onClick = { onDestinationSelected(MainDestination.Settings) }
             )
@@ -180,25 +160,13 @@ fun MovieVortexBottomBar(
 @Composable
 private fun BottomNavItem(
     title: String,
-    iconSelected: ImageVector,
-    iconUnselected: ImageVector,
+    icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit,
     badgeCount: Int = 0
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-
-    val iconScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.15f else 1.0f,
-        animationSpec = tween(200),
-        label = "iconScale"
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) VortexColors.PrimaryText else VortexColors.MutedText,
-        animationSpec = tween(200),
-        label = "contentColor"
-    )
+    val contentColor = if (isSelected) Color.White else Color(0xFF888888)
 
     Column(
         modifier = Modifier
@@ -207,19 +175,16 @@ private fun BottomNavItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 14.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Icon with optional badge
         Box(contentAlignment = Alignment.TopEnd) {
             Icon(
-                imageVector = if (isSelected) iconSelected else iconUnselected,
+                imageVector = icon,
                 contentDescription = title,
                 tint = contentColor,
-                modifier = Modifier
-                    .size(24.dp)
-                    .scale(iconScale)
+                modifier = Modifier.size(22.dp)
             )
 
             if (badgeCount > 0) {
@@ -227,7 +192,7 @@ private fun BottomNavItem(
                     modifier = Modifier
                         .size(14.dp)
                         .clip(CircleShape)
-                        .background(VortexColors.CinematicRed),
+                        .background(Color.Red),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -246,20 +211,73 @@ private fun BottomNavItem(
             text = title,
             color = contentColor,
             fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
-        // Selected active glowing dot indicator
+        // Selected active white underline bar (Screenshot_20261014_180728.jpg)
         Box(
             modifier = Modifier
-                .width(16.dp)
-                .height(2.dp)
+                .width(26.dp)
+                .height(2.5.dp)
                 .clip(RoundedCornerShape(1.dp))
-                .background(
-                    if (isSelected) VortexColors.CinematicRed else Color.Transparent
-                )
+                .background(if (isSelected) Color.White else Color.Transparent)
+        )
+    }
+}
+
+@Composable
+private fun BottomNavItemWithCharacter(
+    title: String,
+    character: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val contentColor = if (isSelected) Color.White else Color(0xFF888888)
+
+    Column(
+        modifier = Modifier
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier.size(22.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = character,
+                color = contentColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = title,
+            color = contentColor,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        // Selected active white underline bar
+        Box(
+            modifier = Modifier
+                .width(26.dp)
+                .height(2.5.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (isSelected) Color.White else Color.Transparent)
         )
     }
 }
