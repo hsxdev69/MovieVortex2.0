@@ -147,6 +147,7 @@ android {
             isDebuggable = false
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -154,7 +155,6 @@ android {
         }
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

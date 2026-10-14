@@ -40,7 +40,7 @@ jobs:
 
       - name: Build MovieVortex APK
         run: |
-          ./gradlew assembleStableDebug --stacktrace --no-daemon
+          ./gradlew assembleStableRelease assembleStableDebug --stacktrace --no-daemon
 
       - name: Locate Generated APK
         id: locate_apk
