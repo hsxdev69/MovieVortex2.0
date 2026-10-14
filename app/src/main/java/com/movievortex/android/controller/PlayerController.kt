@@ -88,7 +88,7 @@ class PlayerController : ViewModel() {
         }
 
         // Resume saved position
-        val lastPos = DataStoreHelper.getViewPos(activeDataUrl)
+        val lastPos = DataStoreHelper.getViewPos(activeDataUrl.hashCode())
         val resumeMs = lastPos?.position ?: 0L
 
         _uiState.value = PlayerUiState(
@@ -187,7 +187,7 @@ class PlayerController : ViewModel() {
         )
         // Persist view position to DataStoreHelper
         if (activeDataUrl.isNotBlank() && durMs > 0) {
-            DataStoreHelper.setViewPos(activeDataUrl, posMs, durMs)
+            DataStoreHelper.setViewPos(activeDataUrl.hashCode(), posMs, durMs)
         }
     }
 

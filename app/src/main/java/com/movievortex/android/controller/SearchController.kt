@@ -92,16 +92,15 @@ class SearchController : ViewModel() {
                 }
 
                 // Query providers in parallel
-                val searchResults = withContext(Dispatchers.IO) {
+                val searchResults: List<MovieVortexMedia> = withContext(Dispatchers.IO) {
                     apis.map { api ->
-                        async {
+                        async<List<MovieVortexMedia>> {
                             try {
-                                val repo = APIRepository(api)
-                                val res = repo.search(query, 1)
-                                if (res is Resource.Success) {
-                                    res.value.map { CoreAdapter.fromSearchResponse(it) }
+                                val res = api.search(query)
+                                if (res != null) {
+                                    res.map { CoreAdapter.fromSearchResponse(it) }
                                 } else emptyList()
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
                                 emptyList()
                             }
                         }

@@ -64,6 +64,6 @@ class SettingsController(private val context: Context) : ViewModel() {
     }
 
     fun clearWatchHistory() {
-        DataStoreHelper.deleteAllResumeState()
+        DataStoreHelper.deleteAllResumeStateIds()
     }
 }

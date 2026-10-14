@@ -48,12 +48,19 @@ object CoreAdapter {
         val id = "${response.apiName}_${response.url}"
 
         // Retrieve watch progress from DataStoreHelper if available
-        val resume = DataStoreHelper.getViewPos(response.url)
+        val resume = DataStoreHelper.getViewPos(response.id ?: response.url.hashCode())
         val progress = if (resume != null && resume.duration > 0) {
             (resume.position.toFloat() / resume.duration.toFloat()).coerceIn(0f, 1f)
         } else 0f
 
-        val isBookmarked = DataStoreHelper.getBookmarkedData(response.url) != null
+        val isBookmarked = DataStoreHelper.getBookmarkedData(response.id ?: response.url.hashCode()) != null
+
+        val year = (response as? MovieSearchResponse)?.year
+            ?: (response as? AnimeSearchResponse)?.year
+            ?: (response as? TvSeriesSearchResponse)?.year
+            ?: (response as? TorrentSearchResponse)?.year
+
+        val rating = response.score?.toFloat(10) ?: 0f
 
         return MovieVortexMedia(
             id = id,
@@ -61,8 +68,8 @@ object CoreAdapter {
             poster = response.posterUrl,
             backdrop = response.posterUrl,
             type = mediaType,
-            year = response.year,
-            rating = response.score?.let { (it * 10f) } ?: (response.rating?.toFloat()?.div(10f)),
+            year = year,
+            rating = rating,
             synopsis = null,
             watchProgress = progress,
             isInMyList = isBookmarked,
@@ -108,12 +115,12 @@ object CoreAdapter {
             )
         }
 
-        val resume = DataStoreHelper.getViewPos(response.url)
+        val resume = DataStoreHelper.getViewPos(response.url.hashCode())
         val progress = if (resume != null && resume.duration > 0) {
             (resume.position.toFloat() / resume.duration.toFloat()).coerceIn(0f, 1f)
         } else 0f
 
-        val isBookmarked = DataStoreHelper.getBookmarkedData(response.url) != null
+        val isBookmarked = DataStoreHelper.getBookmarkedData(response.url.hashCode()) != null
 
         val cast = response.actors?.map { actor ->
             MediaCast(
@@ -131,13 +138,13 @@ object CoreAdapter {
             backdrop = response.backgroundPosterUrl ?: response.posterUrl,
             type = mediaType,
             year = response.year,
-            rating = response.rating?.toFloat()?.div(1000f)?.let { if (it > 10f) it / 10f else it },
+            rating = response.score?.toFloat(10) ?: 0f,
             runtime = response.duration,
             synopsis = response.plot,
             genres = response.tags ?: emptyList(),
             cast = cast,
             production = null,
-            trailerUrl = response.trailers.firstOrNull()?.rawUrl,
+            trailerUrl = response.trailers.firstOrNull()?.extractorUrl,
             seasons = seasons,
             episodes = episodesList,
             watchProgress = progress,
@@ -150,7 +157,7 @@ object CoreAdapter {
     fun fromEpisode(ep: Episode, parentUrl: String): MediaEpisode {
         val sNum = ep.season ?: 1
         val epNum = ep.episode ?: 1
-        val epResume = DataStoreHelper.getViewPos(ep.data)
+        val epResume = DataStoreHelper.getViewPos(ep.id ?: ep.data.hashCode())
         val epProgress = if (epResume != null && epResume.duration > 0) {
             (epResume.position.toFloat() / epResume.duration.toFloat()).coerceIn(0f, 1f)
         } else 0f

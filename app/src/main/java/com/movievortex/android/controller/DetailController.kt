@@ -105,17 +105,20 @@ class DetailController : ViewModel() {
 
         // Persist bookmark via DataStoreHelper
         if (newState) {
-            val bookmark = SyncAPI.SyncResult(
-                id = current.id.hashCode(),
+            val bookmark = DataStoreHelper.BookmarkedData(
+                bookmarkedTime = APIHolder.unixTimeMS,
+                id = current.rawUrl.hashCode(),
+                latestUpdatedTime = APIHolder.unixTimeMS,
                 name = current.title,
                 url = current.rawUrl,
                 apiName = current.providerApiName,
-                type = CoreAdapter.toMediaType(null).name,
-                posterUrl = current.poster
+                type = null,
+                posterUrl = current.poster,
+                year = current.year
             )
-            DataStoreHelper.setBookmarkedData(current.rawUrl, bookmark)
+            DataStoreHelper.setBookmarkedData(current.rawUrl.hashCode(), bookmark)
         } else {
-            DataStoreHelper.removeBookmarkedData(current.rawUrl)
+            DataStoreHelper.deleteBookmarkedData(current.rawUrl.hashCode())
         }
 
         _uiState.value = _uiState.value.copy(

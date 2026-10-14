@@ -29,8 +29,8 @@ class LibraryController : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val bookmarks = DataStoreHelper.getAllBookmarks()
-            val mediaItems = bookmarks?.map { bookmark ->
+            val bookmarks = DataStoreHelper.getAllBookmarkedData()
+            val mediaItems = bookmarks.map { bookmark ->
                 MovieVortexMedia(
                     id = bookmark.url,
                     title = bookmark.name,
@@ -40,7 +40,7 @@ class LibraryController : ViewModel() {
                     rawUrl = bookmark.url,
                     providerApiName = bookmark.apiName
                 )
-            } ?: emptyList()
+            }
 
             _uiState.value = MyListUiState(
                 items = mediaItems,
@@ -50,7 +50,7 @@ class LibraryController : ViewModel() {
     }
 
     fun removeItem(media: MovieVortexMedia) {
-        DataStoreHelper.removeBookmarkedData(media.rawUrl)
+        DataStoreHelper.deleteBookmarkedData(media.rawUrl.hashCode())
         _uiState.value = _uiState.value.copy(
             items = _uiState.value.items.filter { it.id != media.id }
         )
