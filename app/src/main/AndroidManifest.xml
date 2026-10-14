@@ -103,7 +103,7 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:resizeableActivity="true"
-            android:screenOrientation="userLandscape"
+            android:screenOrientation="userPortrait"
             android:supportsPictureInPicture="true"
             tools:ignore="DiscouragedApi">
             <intent-filter>

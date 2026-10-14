@@ -467,7 +467,11 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     }
 
     override fun onResume() {
-        playerHostView?.enterFullscreen { updateOrientation() }
+        playerHostView?.enterFullscreen {
+            if (rotatedManually || isLayout(TV or EMULATOR)) {
+                updateOrientation()
+            }
+        }
         setupKeyEventListener()
         playerHostView?.verifyVolume()
         activity?.attachBackPressedCallback("FullScreenPlayer") {
@@ -1611,7 +1615,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
             playerFullscreen.setOnClickListener {
                 autoHide()
-                nextResize()
+                toggleRotate()
             }
 
             playerTracksBtt.setOnClickListener {
@@ -1682,7 +1686,9 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         // Skip zero-size events emitted when the player transitions to STATE_IDLE,
         // acting on them would reset auto-detected orientation to landscape.
         if (width <= 0 || height <= 0) return
-        updateOrientation()
+        if (rotatedManually) {
+            updateOrientation()
+        }
     }
 
     private fun toggleEpisodesOverlay(show: Boolean) {
