@@ -60,6 +60,8 @@ import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.databinding.DialogPlayerSelectionSheetBinding
 import com.lagradost.cloudstream3.databinding.ItemPlayerSelectionRadioBinding
+import android.content.DialogInterface
+import androidx.appcompat.app.AlertDialog
 import android.view.Gravity
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.databinding.DialogOnlineSubtitlesBinding
@@ -1529,13 +1531,14 @@ class GeneratorPlayer : FullScreenPlayer() {
                 binding.selectionItemsContainer.addView(rowBinding.root)
             }
 
-            dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
+            val d = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
                 .setView(binding.root)
                 .setOnDismissListener(dismiss)
                 .create()
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-            dialog.window?.setGravity(Gravity.BOTTOM)
-            dialog.show()
+            dialog = d
+            d.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            d.window?.setGravity(Gravity.BOTTOM)
+            d.show()
         } catch (e: Exception) {
             logError(e)
         }
@@ -1640,13 +1643,16 @@ class GeneratorPlayer : FullScreenPlayer() {
                 binding.selectionItemsContainer.addView(rowBinding.root)
             }
 
-            dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
+            val d = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
                 .setView(binding.root)
                 .setOnDismissListener(dismiss)
                 .create()
-            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-            dialog.window?.setGravity(Gravity.BOTTOM)
-            dialog.show()
+            dialog = d
+            d.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            d.window?.setGravity(Gravity.BOTTOM)
+            d.show()
+        } catch (e: Exception) {
+            logError(e)
         }
     }
 

@@ -774,13 +774,14 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             showAudioSelectionDialog()
         }
 
-        dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
+        val d = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
             .setView(binding.root)
             .setOnDismissListener(dismiss)
             .create()
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.window?.setGravity(android.view.Gravity.BOTTOM)
-        dialog.show()
+        dialog = d
+        d.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        d.window?.setGravity(android.view.Gravity.BOTTOM)
+        d.show()
     }
 
     // getColorStateList(index) on a TypedArray built from a raw intArrayOf(...) can't be
