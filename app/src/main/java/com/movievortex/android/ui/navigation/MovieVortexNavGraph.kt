@@ -65,25 +65,19 @@ fun launchCloudStreamPlayer(
     episode: MediaEpisode? = null
 ) {
     try {
-        val intent = Intent(context, com.lagradost.cloudstream3.MainActivity::class.java).apply {
-            data = Uri.parse(media.rawUrl)
+        val intent = Intent(context, com.lagradost.cloudstream3.ui.player.DownloadedPlayerActivity::class.java).apply {
             putExtra(com.lagradost.cloudstream3.MainActivity.API_NAME_EXTRA_KEY, media.providerApiName)
-            putExtra("NAME", media.title)
+            putExtra("CONTENT_URL", media.rawUrl)
+            putExtra("TITLE", media.title)
             if (episode != null) {
-                putExtra("START_ACTION", com.lagradost.cloudstream3.ui.result.START_ACTION_LOAD_EP)
                 putExtra("EPISODE", episode.episodeNumber)
                 putExtra("SEASON", episode.seasonNumber)
-                episode.id.toIntOrNull()?.let { intId ->
-                    putExtra("START_VALUE", intId)
-                }
-            } else {
-                putExtra("START_ACTION", com.lagradost.cloudstream3.ui.result.START_ACTION_RESUME_LATEST)
+                putExtra("EPISODE_DATA", episode.dataUrl)
             }
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
     } catch (e: Exception) {
-        android.util.Log.e("MovieVortex", "Error launching CloudStream player", e)
+        android.util.Log.e("MovieVortex", "Error launching player", e)
     }
 }
 
