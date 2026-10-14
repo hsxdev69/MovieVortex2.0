@@ -16,7 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import java.io.File
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.movievortex.android.controller.AnimeController
 import com.movievortex.android.controller.DetailController
@@ -54,6 +59,49 @@ sealed class AppScreen {
     data class Player(val media: MovieVortexMedia, val episode: MediaEpisode? = null, val offlinePath: String? = null) : AppScreen()
 }
 
+fun launchCloudStreamPlayer(
+    context: Context,
+    media: MovieVortexMedia,
+    episode: MediaEpisode? = null
+) {
+    try {
+        val intent = Intent(context, com.lagradost.cloudstream3.MainActivity::class.java).apply {
+            data = Uri.parse(media.rawUrl)
+            putExtra(com.lagradost.cloudstream3.MainActivity.API_NAME_EXTRA_KEY, media.providerApiName)
+            putExtra("NAME", media.title)
+            if (episode != null) {
+                putExtra("START_ACTION", com.lagradost.cloudstream3.ui.result.START_ACTION_LOAD_EP)
+                putExtra("EPISODE", episode.episodeNumber)
+                putExtra("SEASON", episode.seasonNumber)
+                episode.id.toIntOrNull()?.let { intId ->
+                    putExtra("START_VALUE", intId)
+                }
+            } else {
+                putExtra("START_ACTION", com.lagradost.cloudstream3.ui.result.START_ACTION_RESUME_LATEST)
+            }
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        android.util.Log.e("MovieVortex", "Error launching CloudStream player", e)
+    }
+}
+
+fun launchOfflinePlayer(context: Context, localFilePath: String) {
+    try {
+        val file = File(localFilePath)
+        val uri = Uri.fromFile(file)
+        val intent = Intent(context, com.lagradost.cloudstream3.ui.player.DownloadedPlayerActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(uri, "video/*")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        android.util.Log.e("MovieVortex", "Error launching offline player", e)
+    }
+}
+
 @Composable
 fun MovieVortexNavGraph(
     homeController: HomeController = viewModel(),
@@ -67,6 +115,7 @@ fun MovieVortexNavGraph(
     isFirstLaunch: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Splash) }
     var currentDestination by remember { mutableStateOf(MainDestination.MoviesTv) }
 
@@ -125,8 +174,7 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            playerController.initializePlayback(media)
-                                            currentScreen = AppScreen.Player(media)
+                                            launchCloudStreamPlayer(context, media)
                                         },
                                         onPlatformClick = { platform ->
                                             currentScreen = AppScreen.PlatformCatalog(platform)
@@ -142,8 +190,7 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            playerController.initializePlayback(media)
-                                            currentScreen = AppScreen.Player(media)
+                                            launchCloudStreamPlayer(context, media)
                                         }
                                     )
                                 }
@@ -153,16 +200,7 @@ fun MovieVortexNavGraph(
                                         downloadController = downloadController,
                                         onBrowseClick = { currentDestination = MainDestination.MoviesTv },
                                         onPlayOffline = { item ->
-                                            val offlineMedia = MovieVortexMedia(
-                                                id = item.id,
-                                                title = item.title,
-                                                poster = item.poster
-                                            )
-                                            playerController.initializePlayback(
-                                                media = offlineMedia,
-                                                offlineFilePath = item.localFilePath
-                                            )
-                                            currentScreen = AppScreen.Player(offlineMedia, null, item.localFilePath)
+                                            launchOfflinePlayer(context, item.localFilePath)
                                         }
                                     )
                                 }
@@ -207,12 +245,10 @@ fun MovieVortexNavGraph(
                 DetailScreen(
                     detailController = detailController,
                     onPlayMovie = { media ->
-                        playerController.initializePlayback(media)
-                        currentScreen = AppScreen.Player(media)
+                        launchCloudStreamPlayer(context, media)
                     },
                     onPlayEpisode = { media, ep ->
-                        playerController.initializePlayback(media, ep)
-                        currentScreen = AppScreen.Player(media, ep)
+                        launchCloudStreamPlayer(context, media, ep)
                     },
                     onDownloadClick = { media, ep ->
                         // Add to download queue

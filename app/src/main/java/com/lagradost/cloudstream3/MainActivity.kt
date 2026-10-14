@@ -403,17 +403,23 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
                         } else {
                             val apiName = extraArgs?.getString(API_NAME_EXTRA_KEY)
                                 ?.takeIf { it.isNotBlank() }
+                            val startAction = extraArgs?.getInt("START_ACTION", 0) ?: 0
+                            val startValue = extraArgs?.getInt("START_VALUE", 0) ?: 0
+                            val name = extraArgs?.getString("NAME") ?: ""
+                            val episode = extraArgs?.getInt("EPISODE", 0)?.takeIf { it > 0 }
+                            val season = extraArgs?.getInt("SEASON", 0)?.takeIf { it > 0 }
+
                             // if provided, try to match the api name instead of the api url
                             // this is in order to also support providers that use JSON dataUrls
                             // for example
                             if (apiName != null) {
-                                loadResult(str, apiName, "")
+                                loadResult(str, apiName, name, startAction, startValue, episode, season)
                                 return true
                             }
 
                             val matchedApi = apis.filter { str.startsWith(it.mainUrl) }.firstOrNull()
                             if (matchedApi != null) {
-                                loadResult(str, matchedApi.name, "")
+                                loadResult(str, matchedApi.name, name, startAction, startValue, episode, season)
                                 return true
                             }
                         }

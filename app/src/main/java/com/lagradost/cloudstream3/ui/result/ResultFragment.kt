@@ -169,9 +169,11 @@ object ResultFragment {
     fun newInstance(
         url: String,
         apiName: String,
-        name: String,
+        name: String = "",
         startAction: Int = 0,
-        startValue: Int = 0
+        startValue: Int = 0,
+        episode: Int? = null,
+        season: Int? = null
     ): Bundle {
         return Bundle().apply {
             putString(URL_BUNDLE, url)
@@ -179,6 +181,8 @@ object ResultFragment {
             putString(NAME_BUNDLE, name)
             putInt(START_ACTION_BUNDLE, startAction)
             putInt(START_VALUE_BUNDLE, startValue)
+            if (episode != null && episode > 0) putInt(EPISODE_BUNDLE, episode)
+            if (season != null && season > 0) putInt(SEASON_BUNDLE, season)
             putBoolean(RESTART_BUNDLE, true)
         }
     }

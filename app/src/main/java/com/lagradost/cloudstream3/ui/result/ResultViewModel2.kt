@@ -2513,7 +2513,9 @@ class ResultViewModel2 : ViewModel() {
 
             when (autostart.startAction) {
                 START_ACTION_RESUME_LATEST -> {
-                    currentEpisodes[currentIndex]?.let { currentRange ->
+                    val currentRange = currentEpisodes[currentIndex]
+                    var played = false
+                    if (currentRange != null) {
                         for (ep in currentRange) {
                             if (ep.getWatchProgress() > 0.9) continue
                             handleAction(
@@ -2522,7 +2524,20 @@ class ResultViewModel2 : ViewModel() {
                                     ep
                                 )
                             )
+                            played = true
                             break
+                        }
+                    }
+                    if (!played) {
+                        val all = currentEpisodes.values.flatten()
+                        val ep = all.firstOrNull { it.getWatchProgress() <= 0.9 } ?: all.firstOrNull()
+                        if (ep != null) {
+                            handleAction(
+                                EpisodeClickEvent(
+                                    getPlayerAction(activity),
+                                    ep
+                                )
+                            )
                         }
                     }
                 }
@@ -2532,9 +2547,11 @@ class ResultViewModel2 : ViewModel() {
                     val episode =
                         autostart.id?.let { id -> all.firstOrNull { it.id == id } }
                             ?: autostart.episode?.let { ep ->
-                                currentEpisodes[currentIndex]?.firstOrNull { it.episode == ep && it.season == autostart.episode }
-                                    ?: all.firstOrNull { it.episode == ep && it.season == autostart.episode }
+                                currentEpisodes[currentIndex]?.firstOrNull { it.episode == ep && (autostart.season == null || it.season == autostart.season) }
+                                    ?: all.firstOrNull { it.episode == ep && (autostart.season == null || it.season == autostart.season) }
+                                    ?: all.firstOrNull { it.episode == ep }
                             }
+                            ?: all.firstOrNull()
                             ?: return@launchSafe
                     handleAction(
                         EpisodeClickEvent(

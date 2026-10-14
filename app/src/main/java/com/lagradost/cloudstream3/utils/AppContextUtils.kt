@@ -713,17 +713,21 @@ object AppContextUtils {
         apiName: String,
         name: String,
         startAction: Int = 0,
-        startValue: Int = 0
+        startValue: Int = 0,
+        episode: Int? = null,
+        season: Int? = null
     ) {
-        (activity as FragmentActivity?)?.loadResult(url, apiName, name, startAction, startValue)
+        (activity as FragmentActivity?)?.loadResult(url, apiName, name, startAction, startValue, episode, season)
     }
 
     fun FragmentActivity.loadResult(
         url: String,
         apiName: String,
-        name: String,
+        name: String = "",
         startAction: Int = 0,
-        startValue: Int = 0
+        startValue: Int = 0,
+        episode: Int? = null,
+        season: Int? = null
     ) {
         try {
             val settingsManager = PreferenceManager.getDefaultSharedPreferences(this)
@@ -737,7 +741,7 @@ object AppContextUtils {
             // viewModelStore.clear()
             this.navigate(
                 getResultsId(),
-                ResultFragment.newInstance(url, apiName, name, startAction, startValue)
+                ResultFragment.newInstance(url, apiName, name, startAction, startValue, episode, season)
             )
         }
     }
