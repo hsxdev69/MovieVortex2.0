@@ -169,8 +169,7 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            playerController.initializePlayback(media)
-                                            currentScreen = AppScreen.Player(media)
+                                            launchCloudStreamPlayer(context, media, null)
                                         },
                                         onPlatformClick = { platform ->
                                             currentScreen = AppScreen.PlatformCatalog(platform)
@@ -186,8 +185,7 @@ fun MovieVortexNavGraph(
                                             currentScreen = AppScreen.Detail(media)
                                         },
                                         onPlayClick = { media ->
-                                            playerController.initializePlayback(media)
-                                            currentScreen = AppScreen.Player(media)
+                                            launchCloudStreamPlayer(context, media, null)
                                         }
                                     )
                                 }
@@ -242,12 +240,10 @@ fun MovieVortexNavGraph(
                 DetailScreen(
                     detailController = detailController,
                     onPlayMovie = { media ->
-                        playerController.initializePlayback(media)
-                        currentScreen = AppScreen.Player(media)
+                        launchCloudStreamPlayer(context, media, null)
                     },
                     onPlayEpisode = { media, ep ->
-                        playerController.initializePlayback(media, ep)
-                        currentScreen = AppScreen.Player(media, ep)
+                        launchCloudStreamPlayer(context, media, ep)
                     },
                     onDownloadClick = { media, ep ->
                         // Add to download queue

@@ -43,6 +43,7 @@ import com.google.android.material.button.MaterialButton
 import com.lagradost.cloudstream3.CommonActivity.keyEventListener
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.databinding.DialogPlaybackSettingsBinding
 import com.lagradost.cloudstream3.databinding.FragmentPlayerBinding
 import com.lagradost.cloudstream3.databinding.PlayerCustomLayoutBinding
 import com.lagradost.cloudstream3.databinding.SpeedDialogBinding
@@ -715,6 +716,51 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         this.selectSpeedDialog = dialog
         dialog.show()
         //}
+    }
+
+    private fun showPlaybackSettingsDialog() {
+        val act = activity ?: return
+        val isPlaying = player.getIsPlaying()
+        player.handleEvent(CSPlayerEvent.Pause, PlayerEventSource.UI)
+
+        val binding = DialogPlaybackSettingsBinding.inflate(LayoutInflater.from(act))
+        val currentSpeed = player.getPlaybackSpeed()
+        binding.settingsSpeedValue.text = "${currentSpeed}x >"
+
+        val tracks = try { player.getVideoTracks() } catch (_: Exception) { null }
+        val currentAudio = tracks?.allAudioTracks?.firstOrNull()?.label ?: "Unknown"
+        binding.settingsAudioValue.text = "$currentAudio >"
+        binding.settingsQualityValue.text = "Auto >"
+
+        var dialog: Dialog? = null
+        val dismiss = DialogInterface.OnDismissListener {
+            activity?.hideSystemUI()
+            if (isPlaying) {
+                player.handleEvent(CSPlayerEvent.Play, PlayerEventSource.UI)
+            }
+        }
+
+        binding.settingsSpeedRow.setOnClickListener {
+            dialog?.dismiss()
+            showSpeedDialog()
+        }
+
+        binding.settingsQualityRow.setOnClickListener {
+            dialog?.dismiss()
+            showMirrorsDialogue()
+        }
+
+        binding.settingsAudioRow.setOnClickListener {
+            dialog?.dismiss()
+            showTracksDialogue()
+        }
+
+        dialog = AlertDialog.Builder(act, R.style.AlertDialogCustom)
+            .setView(binding.root)
+            .setOnDismissListener(dismiss)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
     }
 
     // getColorStateList(index) on a TypedArray built from a raw intArrayOf(...) can't be
@@ -1560,7 +1606,12 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             }
 
             playerSourcesBtt.setOnClickListener {
-                showMirrorsDialogue()
+                showPlaybackSettingsDialog()
+            }
+
+            playerFullscreen.setOnClickListener {
+                autoHide()
+                nextResize()
             }
 
             playerTracksBtt.setOnClickListener {
