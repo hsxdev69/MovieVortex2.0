@@ -18,15 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.WifiOff
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -148,7 +140,7 @@ fun MovieVortexPlayerScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.WifiOff,
+                                    imageVector = VortexIcons.WifiOff,
                                     contentDescription = "Offline",
                                     tint = VortexColors.EmeraldGreen,
                                     modifier = Modifier.size(14.dp)
@@ -188,7 +180,7 @@ fun MovieVortexPlayerScreen(
                 ) {
                     IconButton(onClick = onCloseClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = VortexIcons.ArrowBack,
                             contentDescription = "Close",
                             tint = Color.White
                         )
@@ -217,7 +209,7 @@ fun MovieVortexPlayerScreen(
                     // Quality Picker Button
                     IconButton(onClick = { showQualityPicker = !showQualityPicker }) {
                         Icon(
-                            imageVector = Icons.Default.HighQuality,
+                            imageVector = VortexIcons.HighQuality,
                             contentDescription = "Quality",
                             tint = Color.White
                         )
@@ -226,7 +218,7 @@ fun MovieVortexPlayerScreen(
                     // Subtitles Button
                     IconButton(onClick = { showSubtitlePicker = !showSubtitlePicker }) {
                         Icon(
-                            imageVector = Icons.Default.ClosedCaption,
+                            imageVector = VortexIcons.Subtitles,
                             contentDescription = "Subtitles",
                             tint = Color.White
                         )
@@ -247,7 +239,7 @@ fun MovieVortexPlayerScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Replay10,
+                            imageVector = VortexIcons.Replay10,
                             contentDescription = "Rewind 10s",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
@@ -263,7 +255,7 @@ fun MovieVortexPlayerScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            imageVector = if (isPlaying) VortexIcons.Pause else VortexIcons.Play,
                             contentDescription = if (isPlaying) "Pause" else "Play",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
@@ -278,7 +270,7 @@ fun MovieVortexPlayerScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Forward10,
+                            imageVector = VortexIcons.Forward10,
                             contentDescription = "Fast Forward 10s",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)

@@ -18,13 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileDownloadOff
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -86,7 +80,7 @@ fun DownloadsScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.FileDownloadOff,
+                        imageVector = VortexIcons.DownloadOff,
                         contentDescription = null,
                         tint = VortexColors.MutedText,
                         modifier = Modifier.size(64.dp)
@@ -229,7 +223,7 @@ fun DownloadItemCard(
             MediaDownloadState.Completed -> {
                 IconButton(onClick = onPlay) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = VortexIcons.Play,
                         contentDescription = "Play offline",
                         tint = VortexColors.EmeraldGreen
                     )
@@ -238,7 +232,7 @@ fun DownloadItemCard(
             MediaDownloadState.Downloading -> {
                 IconButton(onClick = onPause) {
                     Icon(
-                        imageVector = Icons.Default.Pause,
+                        imageVector = VortexIcons.Pause,
                         contentDescription = "Pause",
                         tint = VortexColors.SecondaryText
                     )
@@ -247,7 +241,7 @@ fun DownloadItemCard(
             MediaDownloadState.Paused -> {
                 IconButton(onClick = onResume) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = VortexIcons.Play,
                         contentDescription = "Resume",
                         tint = VortexColors.PrimaryText
                     )
@@ -256,7 +250,7 @@ fun DownloadItemCard(
             else -> {
                 IconButton(onClick = onDelete) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = VortexIcons.Delete,
                         contentDescription = "Delete",
                         tint = VortexColors.MutedText
                     )

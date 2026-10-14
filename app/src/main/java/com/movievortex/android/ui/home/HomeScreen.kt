@@ -26,13 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -342,7 +336,7 @@ fun FeaturedHero(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = VortexIcons.Play,
                         contentDescription = "Play",
                         tint = Color.White
                     )
@@ -364,7 +358,7 @@ fun FeaturedHero(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = VortexIcons.Add,
                         contentDescription = "My List",
                         tint = Color.White
                     )
@@ -425,7 +419,7 @@ fun ContinueWatchingSection(
                             .background(Color(0x99000000), CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = VortexIcons.Close,
                             contentDescription = "Remove",
                             tint = Color.White,
                             modifier = Modifier.size(14.dp)

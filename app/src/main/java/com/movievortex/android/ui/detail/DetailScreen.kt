@@ -22,13 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.PlayArrow
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -142,7 +136,7 @@ fun DetailScreen(
                         .background(Color(0x88000000), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = VortexIcons.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -240,7 +234,7 @@ fun DetailScreen(
                             .height(46.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = VortexIcons.Play,
                             contentDescription = "Play",
                             tint = Color.White
                         )
@@ -266,7 +260,7 @@ fun DetailScreen(
                             .height(46.dp)
                     ) {
                         Icon(
-                            imageVector = if (state.isInMyList) Icons.Default.Check else Icons.Default.BookmarkBorder,
+                            imageVector = if (state.isInMyList) VortexIcons.Check else VortexIcons.BookmarkBorder,
                             contentDescription = "My List",
                             tint = if (state.isInMyList) VortexColors.EmeraldGreen else Color.White
                         )
@@ -294,7 +288,7 @@ fun DetailScreen(
                             .height(46.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.FileDownload,
+                            imageVector = VortexIcons.Download,
                             contentDescription = "Download",
                             tint = Color.White
                         )
@@ -505,7 +499,7 @@ fun EpisodeListItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.PlayArrow,
+                    imageVector = VortexIcons.Play,
                     contentDescription = "Play",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)

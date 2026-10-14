@@ -22,11 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,7 +58,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val state by searchController.uiState.collectAsState()
-    val focusManager = LocalFocusManager()
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = modifier
@@ -79,7 +75,7 @@ fun SearchScreen(
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = VortexIcons.ArrowBack,
                     contentDescription = "Back",
                     tint = VortexColors.PrimaryText
                 )
@@ -103,7 +99,7 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = VortexIcons.Search,
                         contentDescription = "Search",
                         tint = VortexColors.MutedText,
                         modifier = Modifier.size(20.dp)
@@ -147,7 +143,7 @@ fun SearchScreen(
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Clear,
+                                imageVector = VortexIcons.Close,
                                 contentDescription = "Clear",
                                 tint = VortexColors.SecondaryText,
                                 modifier = Modifier.size(16.dp)
@@ -185,7 +181,7 @@ fun SearchScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = VortexIcons.Search,
                                 contentDescription = null,
                                 tint = VortexColors.MutedText,
                                 modifier = Modifier.size(18.dp)
@@ -260,7 +256,7 @@ fun SearchScreen(
                         modifier = Modifier.padding(24.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SearchOff,
+                            imageVector = VortexIcons.SearchOff,
                             contentDescription = "No Results",
                             tint = VortexColors.MutedText,
                             modifier = Modifier.size(56.dp)

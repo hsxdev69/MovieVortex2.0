@@ -18,14 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Wifi
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -89,7 +82,7 @@ fun SettingsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Person,
+                        imageVector = VortexIcons.Person,
                         contentDescription = "Profile",
                         tint = VortexColors.CinematicRed,
                         modifier = Modifier.size(28.dp)
@@ -119,7 +112,7 @@ fun SettingsScreen(
         // 2. Playback Preferences Group
         SettingsSection(title = "PLAYBACK") {
             SettingsToggleRow(
-                icon = Icons.Default.HighQuality,
+                icon = VortexIcons.HighQuality,
                 title = "Auto-play Next Episode",
                 subtitle = "Seamlessly play the next episode when current ends",
                 checked = state.autoPlayNext,
@@ -129,7 +122,7 @@ fun SettingsScreen(
             SettingsDivider()
 
             SettingsActionRow(
-                icon = Icons.Default.HighQuality,
+                icon = VortexIcons.HighQuality,
                 title = "Default Streaming Quality",
                 value = state.defaultQuality
             )
@@ -140,7 +133,7 @@ fun SettingsScreen(
         // 3. Network & DNS Group
         SettingsSection(title = "NETWORK & SECURITY") {
             SettingsClickableRow(
-                icon = Icons.Default.Dns,
+                icon = VortexIcons.Dns,
                 title = "Secure DNS (DoH)",
                 subtitle = "Encrypted streaming resolution & anti-throttling",
                 value = settingsController.dnsOptions.firstOrNull { it.id == state.selectedDnsId }?.name ?: "Cloudflare",
@@ -153,7 +146,7 @@ fun SettingsScreen(
         // 4. Downloads Group
         SettingsSection(title = "DOWNLOADS") {
             SettingsToggleRow(
-                icon = Icons.Default.Wifi,
+                icon = VortexIcons.Wifi,
                 title = "Download over Wi-Fi Only",
                 subtitle = "Save mobile cellular data allowance",
                 checked = state.downloadWifiOnly,
@@ -166,7 +159,7 @@ fun SettingsScreen(
         // 5. Library & Storage Group
         SettingsSection(title = "DATA & STORAGE") {
             SettingsClickableRow(
-                icon = Icons.Default.Storage,
+                icon = VortexIcons.Storage,
                 title = "Clear App Cache",
                 subtitle = "Free temporary cache storage",
                 value = "${state.cacheSizeMb} MB",
@@ -176,7 +169,7 @@ fun SettingsScreen(
             SettingsDivider()
 
             SettingsClickableRow(
-                icon = Icons.Default.DeleteSweep,
+                icon = VortexIcons.DeleteSweep,
                 title = "Clear Watch History",
                 subtitle = "Reset all Continue Watching entries",
                 value = "Clear",

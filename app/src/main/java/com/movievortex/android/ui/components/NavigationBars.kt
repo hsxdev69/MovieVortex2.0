@@ -23,16 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -113,7 +103,7 @@ fun MovieVortexTopBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = VortexIcons.Search,
                     contentDescription = "Search",
                     tint = VortexColors.PrimaryText,
                     modifier = Modifier.size(20.dp)
@@ -153,24 +143,24 @@ fun MovieVortexBottomBar(
         ) {
             BottomNavItem(
                 title = "Movies & TV",
-                iconSelected = Icons.Filled.Movie,
-                iconUnselected = Icons.Outlined.Movie,
+                iconSelected = VortexIcons.Movie,
+                iconUnselected = VortexIcons.Movie,
                 isSelected = currentDestination == MainDestination.MoviesTv,
                 onClick = { onDestinationSelected(MainDestination.MoviesTv) }
             )
 
             BottomNavItem(
                 title = "Anime",
-                iconSelected = Icons.Filled.Tv,
-                iconUnselected = Icons.Outlined.Tv,
+                iconSelected = VortexIcons.Tv,
+                iconUnselected = VortexIcons.Tv,
                 isSelected = currentDestination == MainDestination.Anime,
                 onClick = { onDestinationSelected(MainDestination.Anime) }
             )
 
             BottomNavItem(
                 title = "Downloads",
-                iconSelected = Icons.Filled.FileDownload,
-                iconUnselected = Icons.Outlined.FileDownload,
+                iconSelected = VortexIcons.Download,
+                iconUnselected = VortexIcons.Download,
                 isSelected = currentDestination == MainDestination.Downloads,
                 badgeCount = activeDownloadCount,
                 onClick = { onDestinationSelected(MainDestination.Downloads) }
@@ -178,8 +168,8 @@ fun MovieVortexBottomBar(
 
             BottomNavItem(
                 title = "Settings",
-                iconSelected = Icons.Filled.Settings,
-                iconUnselected = Icons.Outlined.Settings,
+                iconSelected = VortexIcons.Settings,
+                iconUnselected = VortexIcons.Settings,
                 isSelected = currentDestination == MainDestination.Settings,
                 onClick = { onDestinationSelected(MainDestination.Settings) }
             )

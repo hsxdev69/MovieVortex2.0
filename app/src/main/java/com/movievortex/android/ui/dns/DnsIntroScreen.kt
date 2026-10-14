@@ -19,12 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Security
+import com.movievortex.android.ui.components.VortexIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -83,7 +78,7 @@ fun DnsIntroScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Security,
+                    imageVector = VortexIcons.Security,
                     contentDescription = "Secure DNS",
                     tint = VortexColors.CinematicRed,
                     modifier = Modifier.size(32.dp)
@@ -140,7 +135,7 @@ fun DnsIntroScreen(
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
-                    imageVector = if (isInstructionsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (isInstructionsExpanded) VortexIcons.ChevronUp else VortexIcons.ChevronDown,
                     contentDescription = "Toggle instructions",
                     tint = VortexColors.CoolBlue,
                     modifier = Modifier.size(18.dp)
