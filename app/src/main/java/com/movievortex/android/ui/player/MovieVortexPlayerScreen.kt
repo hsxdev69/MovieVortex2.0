@@ -192,7 +192,7 @@ fun MovieVortexPlayerScreen(
             )
 
             // Fullscreen Overlay Controls
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = state.isControlsVisible,
                 enter = fadeIn(),
                 exit = fadeOut()
@@ -290,7 +290,7 @@ fun MovieVortexPlayerScreen(
             }
 
             // Embedded Overlay Controls
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = state.isControlsVisible,
                 enter = fadeIn(),
                 exit = fadeOut()
