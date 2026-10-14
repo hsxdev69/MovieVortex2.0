@@ -40,9 +40,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.view.ViewGroup
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.PlayerView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import com.movievortex.android.controller.PlayerController
 import com.movievortex.android.controller.PlayerStatus
 import com.movievortex.android.ui.theme.VortexColors
+import kotlinx.coroutines.delay
 
 @Composable
 fun MovieVortexPlayerScreen(
@@ -51,9 +62,69 @@ fun MovieVortexPlayerScreen(
     modifier: Modifier = Modifier
 ) {
     val state by playerController.uiState.collectAsState()
+    val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(true) }
     var showQualityPicker by remember { mutableStateOf(false) }
     var showSubtitlePicker by remember { mutableStateOf(false) }
+
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    // Attach stream source to ExoPlayer
+    LaunchedEffect(state.currentSource) {
+        state.currentSource?.let { source ->
+            try {
+                val mediaItem = MediaItem.fromUri(source.url)
+                val dataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                if (source.headers.isNotEmpty()) {
+                    dataSourceFactory.setDefaultRequestProperties(source.headers)
+                }
+                val mediaSource = DefaultMediaSourceFactory(dataSourceFactory)
+                    .createMediaSource(mediaItem)
+
+                exoPlayer.setMediaSource(mediaSource)
+                if (state.currentPositionMs > 0) {
+                    exoPlayer.seekTo(state.currentPositionMs)
+                }
+                exoPlayer.prepare()
+                exoPlayer.play()
+                isPlaying = true
+            } catch (_: Exception) {
+                try {
+                    val mediaItem = MediaItem.fromUri(source.url)
+                    exoPlayer.setMediaItem(mediaItem)
+                    if (state.currentPositionMs > 0) {
+                        exoPlayer.seekTo(state.currentPositionMs)
+                    }
+                    exoPlayer.prepare()
+                    exoPlayer.play()
+                    isPlaying = true
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    // Periodic progress syncing with controller
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            delay(500)
+            if (exoPlayer.isPlaying || exoPlayer.currentPosition > 0) {
+                val currentPos = exoPlayer.currentPosition
+                val dur = exoPlayer.duration.coerceAtLeast(0L)
+                playerController.updateProgress(currentPos, dur)
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -68,6 +139,21 @@ fun MovieVortexPlayerScreen(
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
+            if (state.currentSource != null && state.status != PlayerStatus.ResolvingStreams && state.status != PlayerStatus.Error) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            useController = false
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             when (state.status) {
                 PlayerStatus.ResolvingStreams -> {
                     Column(
@@ -178,7 +264,10 @@ fun MovieVortexPlayerScreen(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onCloseClick) {
+                    IconButton(onClick = {
+                        try { exoPlayer.stop() } catch (_: Exception) {}
+                        onCloseClick()
+                    }) {
                         Icon(
                             imageVector = VortexIcons.ArrowBack,
                             contentDescription = "Close",
@@ -233,8 +322,9 @@ fun MovieVortexPlayerScreen(
                 ) {
                     IconButton(
                         onClick = {
-                            val newPos = (state.currentPositionMs - 10000L).coerceAtLeast(0L)
-                            playerController.updateProgress(newPos, state.durationMs)
+                            val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                            exoPlayer.seekTo(newPos)
+                            playerController.updateProgress(newPos, exoPlayer.duration.coerceAtLeast(0L))
                         },
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -251,7 +341,15 @@ fun MovieVortexPlayerScreen(
                             .size(64.dp)
                             .clip(CircleShape)
                             .background(VortexColors.CinematicRed)
-                            .clickable { isPlaying = !isPlaying },
+                            .clickable {
+                                if (isPlaying) {
+                                    exoPlayer.pause()
+                                    isPlaying = false
+                                } else {
+                                    exoPlayer.play()
+                                    isPlaying = true
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -264,8 +362,10 @@ fun MovieVortexPlayerScreen(
 
                     IconButton(
                         onClick = {
-                            val newPos = (state.currentPositionMs + 10000L).coerceAtMost(state.durationMs)
-                            playerController.updateProgress(newPos, state.durationMs)
+                            val dur = exoPlayer.duration.coerceAtLeast(0L)
+                            val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
+                            exoPlayer.seekTo(newPos)
+                            playerController.updateProgress(newPos, dur)
                         },
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -308,8 +408,10 @@ fun MovieVortexPlayerScreen(
                     Slider(
                         value = progressFraction,
                         onValueChange = { frac ->
-                            val newPos = (frac * state.durationMs).toLong()
-                            playerController.updateProgress(newPos, state.durationMs)
+                            val dur = exoPlayer.duration.coerceAtLeast(0L)
+                            val newPos = (frac * dur).toLong()
+                            exoPlayer.seekTo(newPos)
+                            playerController.updateProgress(newPos, dur)
                         },
                         colors = SliderDefaults.colors(
                             thumbColor = VortexColors.CinematicRed,

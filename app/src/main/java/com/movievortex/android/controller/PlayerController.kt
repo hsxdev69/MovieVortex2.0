@@ -3,8 +3,13 @@ package com.movievortex.android.controller
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.lagradost.cloudstream3.APIHolder
+import com.lagradost.cloudstream3.AnimeLoadResponse
+import com.lagradost.cloudstream3.MovieLoadResponse
 import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TvSeriesLoadResponse
+import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.ui.APIRepository
 import com.lagradost.cloudstream3.utils.DataStoreHelper
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -132,17 +137,49 @@ class PlayerController : ViewModel() {
                 val collectedSources = mutableListOf<StreamSource>()
                 val collectedSubs = mutableListOf<SubtitleTrack>()
 
-                val success = withContext(Dispatchers.IO) {
-                    repo.loadLinks(
-                        data = activeDataUrl,
-                        isCasting = false,
-                        subtitleCallback = { subFile: SubtitleFile ->
-                            collectedSubs.add(CoreAdapter.fromSubtitleFile(subFile))
-                        },
-                        callback = { link: ExtractorLink ->
-                            collectedSources.add(CoreAdapter.fromExtractorLink(link))
+                // Pre-load content page if activeDataUrl is a page URL rather than extractor data
+                var streamDataUrl = activeDataUrl
+                if (!streamDataUrl.startsWith("{") && (streamDataUrl.startsWith("http://") || streamDataUrl.startsWith("https://"))) {
+                    try {
+                        val loadRes = withContext(Dispatchers.IO) { repo.load(streamDataUrl) }
+                        if (loadRes is Resource.Success) {
+                            when (val v = loadRes.value) {
+                                is MovieLoadResponse -> {
+                                    if (v.dataUrl.isNotBlank()) streamDataUrl = v.dataUrl
+                                }
+                                is TvSeriesLoadResponse -> {
+                                    v.episodes.firstOrNull()?.data?.let {
+                                        if (it.isNotBlank()) streamDataUrl = it
+                                    }
+                                }
+                                is AnimeLoadResponse -> {
+                                    v.episodes.values.flatten().firstOrNull()?.data?.let {
+                                        if (it.isNotBlank()) streamDataUrl = it
+                                    }
+                                }
+                                else -> {}
+                            }
                         }
-                    )
+                    } catch (t: Throwable) {
+                        Log.w("PlayerController", "Pre-load check: ${t.message}")
+                    }
+                }
+
+                withContext(Dispatchers.IO) {
+                    try {
+                        repo.loadLinks(
+                            data = streamDataUrl,
+                            isCasting = false,
+                            subtitleCallback = { subFile: SubtitleFile ->
+                                collectedSubs.add(CoreAdapter.fromSubtitleFile(subFile))
+                            },
+                            callback = { link: ExtractorLink ->
+                                collectedSources.add(CoreAdapter.fromExtractorLink(link))
+                            }
+                        )
+                    } catch (t: Throwable) {
+                        Log.e("PlayerController", "loadLinks exception: ${t.message}")
+                    }
                 }
 
                 if (collectedSources.isNotEmpty()) {
@@ -162,8 +199,7 @@ class PlayerController : ViewModel() {
                         errorMessage = "This content is currently unavailable. Please try again."
                     )
                 }
-            } catch (e: Exception) {
-                // PRD Rule 33: Never expose technical errors to normal users
+            } catch (t: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     status = PlayerStatus.Error,
                     errorMessage = "This content is currently unavailable. Please try again."

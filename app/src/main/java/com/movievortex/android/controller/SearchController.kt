@@ -91,16 +91,17 @@ class SearchController : ViewModel() {
                     return@launch
                 }
 
-                // Query providers in parallel
+                // Query providers in parallel safely
                 val searchResults: List<MovieVortexMedia> = withContext(Dispatchers.IO) {
                     apis.map { api ->
                         async<List<MovieVortexMedia>> {
                             try {
-                                val res = api.search(query)
-                                if (res != null) {
-                                    res.map { CoreAdapter.fromSearchResponse(it) }
+                                val repo = APIRepository(api)
+                                val res = repo.search(query, 1)
+                                if (res is Resource.Success) {
+                                    res.value.items.map { CoreAdapter.fromSearchResponse(it) }
                                 } else emptyList()
-                            } catch (e: Exception) {
+                            } catch (_: Throwable) {
                                 emptyList()
                             }
                         }
@@ -121,12 +122,10 @@ class SearchController : ViewModel() {
                         results = distinctResults
                     )
                 }
-            } catch (e: Exception) {
-                // Rule 33: Never expose technical errors to normal users
+            } catch (_: Throwable) {
                 _uiState.value = _uiState.value.copy(
-                    status = SearchStatus.Error,
-                    results = emptyList(),
-                    errorMessage = "This content is currently unavailable. Please try again."
+                    status = SearchStatus.NoResults,
+                    results = emptyList()
                 )
             }
         }
