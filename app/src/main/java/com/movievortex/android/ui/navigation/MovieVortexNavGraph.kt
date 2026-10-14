@@ -87,7 +87,8 @@ fun launchCloudStreamPlayer(
     }
 }
 
-fun launchOfflinePlayer(context: Context, localFilePath: String) {
+fun launchOfflinePlayer(context: Context, localFilePath: String?) {
+    if (localFilePath.isNullOrBlank()) return
     try {
         val file = File(localFilePath)
         val uri = Uri.fromFile(file)
