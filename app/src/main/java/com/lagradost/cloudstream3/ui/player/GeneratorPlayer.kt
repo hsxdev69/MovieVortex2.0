@@ -58,6 +58,9 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.getTMDbId
 import com.lagradost.cloudstream3.MainActivity
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.databinding.DialogPlayerSelectionSheetBinding
+import com.lagradost.cloudstream3.databinding.ItemPlayerSelectionRadioBinding
+import android.view.Gravity
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.databinding.DialogOnlineSubtitlesBinding
 import com.lagradost.cloudstream3.databinding.FragmentPlayerBinding
@@ -1404,6 +1407,246 @@ class GeneratorPlayer : FullScreenPlayer() {
             }
         } catch (e: Exception) {
             logError(e)
+        }
+    }
+
+    override fun showQualitySelectionDialog() {
+        val act = activity ?: return
+        val ctx = context ?: return
+        try {
+            val isPlaying = player.getIsPlaying()
+            player.handleEvent(CSPlayerEvent.Pause, PlayerEventSource.UI)
+
+            val tracks = player.getVideoTracks()
+            val currentVideoTracks = tracks.allVideoTracks.sortedBy { (it.height ?: 0) * -1 }
+            val currentVideo = tracks.currentVideoTrack
+
+            val binding = DialogPlayerSelectionSheetBinding.inflate(LayoutInflater.from(ctx))
+            binding.selectionDialogTitle.text = "Quality"
+
+            var dialog: Dialog? = null
+            val dismiss = DialogInterface.OnDismissListener {
+                activity?.hideSystemUI()
+                if (isPlaying) {
+                    player.handleEvent(CSPlayerEvent.Play, PlayerEventSource.UI)
+                }
+            }
+
+            data class QualityItem(
+                val name: String,
+                val subtext: String? = null,
+                val isSelected: Boolean,
+                val onSelect: () -> Unit
+            )
+
+            val items = mutableListOf<QualityItem>()
+
+            if (currentVideoTracks.size > 1) {
+                val isAutoSelected = currentVideo == null
+                items.add(QualityItem(
+                    name = "Auto",
+                    isSelected = isAutoSelected,
+                    onSelect = {
+                        player.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE, null)
+                    }
+                ))
+
+                currentVideoTracks.forEach { track ->
+                    val label = if (track.height != null && track.height != NO_VALUE) {
+                        "${track.height}p"
+                    } else {
+                        track.label ?: "Standard"
+                    }
+                    val isSelected = track.id == currentVideo?.id || (track.height == currentVideo?.height && currentVideo?.height != null)
+                    items.add(QualityItem(
+                        name = label,
+                        isSelected = isSelected,
+                        onSelect = {
+                            val width = track.width ?: NO_VALUE
+                            val height = track.height ?: NO_VALUE
+                            if (width != NO_VALUE && height != NO_VALUE) {
+                                player.setMaxVideoSize(width, height, track.id)
+                            }
+                        }
+                    ))
+                }
+            } else {
+                val sortedLinks = viewModel.state.links.mapNotNull { it.first }
+                if (sortedLinks.size > 1) {
+                    sortedLinks.forEach { link ->
+                        val label = Qualities.getStringByInt(link.quality)
+                        val isSelected = currentSelectedLink?.first?.url == link.url
+                        items.add(QualityItem(
+                            name = label,
+                            subtext = link.name.takeIf { it.isNotBlank() && it != label },
+                            isSelected = isSelected,
+                            onSelect = {
+                                val match = viewModel.state.links.firstOrNull { it.first?.url == link.url }
+                                if (match != null) {
+                                    loadLink(match, true)
+                                }
+                            }
+                        ))
+                    }
+                } else {
+                    val currentH = currentVideo?.height
+                    val currentLabel = if (currentH != null && currentH > 0) "${currentH}p" else "1080p"
+                    items.add(QualityItem("360p", null, currentLabel == "360p") {
+                        player.setMaxVideoSize(640, 360, null)
+                    })
+                    items.add(QualityItem("480p", null, currentLabel == "480p") {
+                        player.setMaxVideoSize(854, 480, null)
+                    })
+                    items.add(QualityItem("720p", null, currentLabel == "720p") {
+                        player.setMaxVideoSize(1280, 720, null)
+                    })
+                    items.add(QualityItem("1080p", null, currentLabel == "1080p") {
+                        player.setMaxVideoSize(1920, 1080, null)
+                    })
+                }
+            }
+
+            val radioButtons = mutableListOf<androidx.appcompat.widget.AppCompatRadioButton>()
+            items.forEach { item ->
+                val rowBinding = ItemPlayerSelectionRadioBinding.inflate(LayoutInflater.from(ctx), binding.selectionItemsContainer, false)
+                rowBinding.selectionItemText.text = item.name
+                if (!item.subtext.isNullOrBlank()) {
+                    rowBinding.selectionItemSubtext.text = item.subtext
+                    rowBinding.selectionItemSubtext.visibility = View.VISIBLE
+                }
+                rowBinding.selectionItemRadio.isChecked = item.isSelected
+                radioButtons.add(rowBinding.selectionItemRadio)
+
+                rowBinding.root.setOnClickListener {
+                    radioButtons.forEach { it.isChecked = false }
+                    rowBinding.selectionItemRadio.isChecked = true
+                    item.onSelect()
+                    rowBinding.root.postDelayed({
+                        dialog?.dismiss()
+                    }, 150)
+                }
+
+                binding.selectionItemsContainer.addView(rowBinding.root)
+            }
+
+            dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
+                .setView(binding.root)
+                .setOnDismissListener(dismiss)
+                .create()
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            dialog.window?.setGravity(Gravity.BOTTOM)
+            dialog.show()
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
+    override fun showAudioSelectionDialog() {
+        val act = activity ?: return
+        val ctx = context ?: return
+        try {
+            val isPlaying = player.getIsPlaying()
+            player.handleEvent(CSPlayerEvent.Pause, PlayerEventSource.UI)
+
+            val tracks = player.getVideoTracks()
+            val currentAudioTracks = tracks.allAudioTracks
+            val currentAudio = tracks.currentAudioTrack
+
+            val binding = DialogPlayerSelectionSheetBinding.inflate(LayoutInflater.from(ctx))
+            binding.selectionDialogTitle.text = "Audio"
+
+            var dialog: Dialog? = null
+            val dismiss = DialogInterface.OnDismissListener {
+                activity?.hideSystemUI()
+                if (isPlaying) {
+                    player.handleEvent(CSPlayerEvent.Play, PlayerEventSource.UI)
+                }
+            }
+
+            data class AudioItem(
+                val name: String,
+                val subtext: String? = null,
+                val isSelected: Boolean,
+                val onSelect: () -> Unit
+            )
+
+            val items = mutableListOf<AudioItem>()
+
+            if (currentAudioTracks.isNotEmpty()) {
+                currentAudioTracks.forEach { track ->
+                    val language = (
+                        track.language?.trim()?.let { raw ->
+                            fromTagToLanguageName(raw)
+                                ?: fromTagToLanguageName(raw.replace('_', '-').substringBefore('-').lowercase())
+                                ?: raw
+                        }
+                        ?: track.label
+                        ?: "Audio"
+                    ).replaceFirstChar { it.uppercaseChar() }
+
+                    val isSelected = track.id == currentAudio?.id && track.formatIndex == currentAudio?.formatIndex
+
+                    val codec = audioCodecName(track.sampleMimeType)
+                    val channels = when (track.channelCount) {
+                        1 -> "Mono"
+                        2 -> "Stereo"
+                        6 -> "5.1"
+                        8 -> "7.1"
+                        else -> null
+                    }
+                    val extra = listOfNotNull(channels, codec.takeIf { it.isNotBlank() }?.uppercase()).joinToString(" • ").takeIf { it.isNotBlank() }
+
+                    items.add(AudioItem(
+                        name = language,
+                        subtext = extra,
+                        isSelected = isSelected,
+                        onSelect = {
+                            player.setPreferredAudioTrack(
+                                track.language,
+                                track.id,
+                                track.formatIndex
+                            )
+                        }
+                    ))
+                }
+            } else {
+                items.add(AudioItem(
+                    name = "Hindi",
+                    isSelected = true,
+                    onSelect = {}
+                ))
+            }
+
+            val radioButtons = mutableListOf<androidx.appcompat.widget.AppCompatRadioButton>()
+            items.forEach { item ->
+                val rowBinding = ItemPlayerSelectionRadioBinding.inflate(LayoutInflater.from(ctx), binding.selectionItemsContainer, false)
+                rowBinding.selectionItemText.text = item.name
+                if (!item.subtext.isNullOrBlank()) {
+                    rowBinding.selectionItemSubtext.text = item.subtext
+                    rowBinding.selectionItemSubtext.visibility = View.VISIBLE
+                }
+                rowBinding.selectionItemRadio.isChecked = item.isSelected
+                radioButtons.add(rowBinding.selectionItemRadio)
+
+                rowBinding.root.setOnClickListener {
+                    radioButtons.forEach { it.isChecked = false }
+                    rowBinding.selectionItemRadio.isChecked = true
+                    item.onSelect()
+                    rowBinding.root.postDelayed({
+                        dialog?.dismiss()
+                    }, 150)
+                }
+
+                binding.selectionItemsContainer.addView(rowBinding.root)
+            }
+
+            dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
+                .setView(binding.root)
+                .setOnDismissListener(dismiss)
+                .create()
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            dialog.window?.setGravity(Gravity.BOTTOM)
+            dialog.show()
         }
     }
 

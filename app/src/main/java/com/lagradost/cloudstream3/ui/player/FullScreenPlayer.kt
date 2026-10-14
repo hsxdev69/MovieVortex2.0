@@ -722,6 +722,14 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         //}
     }
 
+    open fun showQualitySelectionDialog() {
+        showMirrorsDialogue()
+    }
+
+    open fun showAudioSelectionDialog() {
+        showTracksDialogue()
+    }
+
     private fun showPlaybackSettingsDialog() {
         val act = activity ?: return
         val isPlaying = player.getIsPlaying()
@@ -732,9 +740,16 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         binding.settingsSpeedValue.text = "${currentSpeed}x >"
 
         val tracks = try { player.getVideoTracks() } catch (_: Exception) { null }
-        val currentAudio = tracks?.allAudioTracks?.firstOrNull()?.label ?: "Unknown"
+        val currentAudio = tracks?.currentAudioTrack?.language?.let {
+            com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(it)
+        } ?: tracks?.allAudioTracks?.firstOrNull()?.let {
+            it.language?.let { lang -> com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(lang) } ?: it.label
+        } ?: "Hindi"
         binding.settingsAudioValue.text = "$currentAudio >"
-        binding.settingsQualityValue.text = "Auto >"
+
+        val currentVideoHeight = tracks?.currentVideoTrack?.height
+        val qualityText = if (currentVideoHeight != null && currentVideoHeight > 0) "${currentVideoHeight}p" else "Auto"
+        binding.settingsQualityValue.text = "$qualityText >"
 
         var dialog: Dialog? = null
         val dismiss = DialogInterface.OnDismissListener {
@@ -751,19 +766,20 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
 
         binding.settingsQualityRow.setOnClickListener {
             dialog?.dismiss()
-            showMirrorsDialogue()
+            showQualitySelectionDialog()
         }
 
         binding.settingsAudioRow.setOnClickListener {
             dialog?.dismiss()
-            showTracksDialogue()
+            showAudioSelectionDialog()
         }
 
-        dialog = AlertDialog.Builder(act, R.style.AlertDialogCustom)
+        dialog = AlertDialog.Builder(act, R.style.AlertDialogCustomTransparent)
             .setView(binding.root)
             .setOnDismissListener(dismiss)
             .create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setGravity(android.view.Gravity.BOTTOM)
         dialog.show()
     }
 

@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.movievortex.android.ui.components.VortexIcons
+import com.movievortex.android.ui.components.OttLogoBadge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -474,12 +475,12 @@ fun PlatformShortcutsSection(
     onPlatformClick: (StreamingPlatform) -> Unit
 ) {
     val ottPlatforms = listOf(
-        Pair("Prime Video", Color(0xFF00A8E1)),
-        Pair("Netflix", Color(0xFFE50914)),
-        Pair("Sony LIV", Color(0xFF6B21A8)),
-        Pair("Crunchyroll", Color(0xFFFF6400)),
-        Pair("JioHotstar", Color(0xFF1B4DFF)),
-        Pair("Zee5", Color(0xFF8250DF))
+        "Prime Video",
+        "Netflix",
+        "Sony LIV",
+        "Crunchyroll",
+        "JioHotstar",
+        "Zee5"
     )
 
     LazyRow(
@@ -487,34 +488,18 @@ fun PlatformShortcutsSection(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(ottPlatforms) { (name, brandColor) ->
+        items(ottPlatforms) { name ->
             Box(
                 modifier = Modifier
                     .size(58.dp)
                     .clip(CircleShape)
-                    .background(brandColor)
                     .clickable {
                         val matched = platforms.firstOrNull { it.name.contains(name, ignoreCase = true) }
                             ?: StreamingPlatform(name.lowercase(), name, "", 0xFF000000L, "")
                         onPlatformClick(matched)
-                    },
-                contentAlignment = Alignment.Center
+                    }
             ) {
-                Text(
-                    text = when (name) {
-                        "Prime Video" -> "prime\nvideo"
-                        "Netflix" -> "N"
-                        "Sony LIV" -> "SONY\nliv"
-                        "Crunchyroll" -> "CR"
-                        "JioHotstar" -> "Jio\nHotstar"
-                        else -> "Z5"
-                    },
-                    color = Color.White,
-                    fontSize = if (name == "Netflix") 24.sp else 10.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 11.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
+                OttLogoBadge(name = name)
             }
         }
     }
