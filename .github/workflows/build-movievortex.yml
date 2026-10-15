@@ -71,3 +71,4 @@ jobs:
           draft: false
           prerelease: false
           files: app/build/outputs/apk/stable/release/*.apk
+          overwrite: true
