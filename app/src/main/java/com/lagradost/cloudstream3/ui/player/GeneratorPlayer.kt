@@ -1193,6 +1193,9 @@ class GeneratorPlayer : FullScreenPlayer() {
                             }
                         }
 
+                        val sourcesArrayAdapter =
+                            ArrayAdapter<String>(ctx, R.layout.sort_bottom_single_choice)
+
                         sourcesArrayAdapter.addAll(filteredLinks.map { displayLink ->
                             val (link, uri) = displayLink.link
                             val rawName = link?.name ?: uri?.name ?: "Server"
