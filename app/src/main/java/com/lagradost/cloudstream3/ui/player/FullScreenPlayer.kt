@@ -730,6 +730,21 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         showTracksDialogue()
     }
 
+    open fun getPlaybackQualityText(): String {
+        val tracks = try { player.getVideoTracks() } catch (_: Exception) { null }
+        val currentVideoHeight = tracks?.currentVideoTrack?.height
+        return if (currentVideoHeight != null && currentVideoHeight > 0) "${currentVideoHeight}p" else "Auto"
+    }
+
+    open fun getPlaybackAudioText(): String {
+        val tracks = try { player.getVideoTracks() } catch (_: Exception) { null }
+        return tracks?.currentAudioTrack?.language?.let {
+            com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(it)
+        } ?: tracks?.allAudioTracks?.firstOrNull()?.let {
+            it.language?.let { lang -> com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(lang) } ?: it.label
+        } ?: "Hindi"
+    }
+
     private fun showPlaybackSettingsDialog() {
         val act = activity ?: return
         val isPlaying = player.getIsPlaying()
@@ -739,17 +754,8 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         val currentSpeed = player.getPlaybackSpeed()
         binding.settingsSpeedValue.text = "${currentSpeed}x >"
 
-        val tracks = try { player.getVideoTracks() } catch (_: Exception) { null }
-        val currentAudio = tracks?.currentAudioTrack?.language?.let {
-            com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(it)
-        } ?: tracks?.allAudioTracks?.firstOrNull()?.let {
-            it.language?.let { lang -> com.lagradost.cloudstream3.utils.SubtitleHelper.fromTagToLanguageName(lang) } ?: it.label
-        } ?: "Hindi"
-        binding.settingsAudioValue.text = "$currentAudio >"
-
-        val currentVideoHeight = tracks?.currentVideoTrack?.height
-        val qualityText = if (currentVideoHeight != null && currentVideoHeight > 0) "${currentVideoHeight}p" else "Auto"
-        binding.settingsQualityValue.text = "$qualityText >"
+        binding.settingsAudioValue.text = "${getPlaybackAudioText()} >"
+        binding.settingsQualityValue.text = "${getPlaybackQualityText()} >"
 
         var dialog: Dialog? = null
         val dismiss = DialogInterface.OnDismissListener {

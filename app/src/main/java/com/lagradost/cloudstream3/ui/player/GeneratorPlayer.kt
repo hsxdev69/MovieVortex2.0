@@ -186,6 +186,43 @@ class GeneratorPlayer : FullScreenPlayer() {
 
     private var currentSelectedLink: Pair<ExtractorLink?, ExtractorUri?>? = null
     private var currentSelectedSubtitles: SubtitleData? = null
+    private var userSelectedLanguage: String = "Hindi"
+    private var userSelectedQuality: Int = 1080
+
+    override fun getPlaybackQualityText(): String = "${userSelectedQuality}p"
+    override fun getPlaybackAudioText(): String = userSelectedLanguage
+
+    private fun extractLanguage(name: String?, url: String?): String? {
+        val text = "${name ?: ""} ${url ?: ""}".lowercase()
+        return when {
+            text.contains("hindi") || text.contains("hin") || (text.contains("dubbed") && !text.contains("eng")) -> "Hindi"
+            text.contains("english") || text.contains("eng") -> "English"
+            text.contains("tamil") || text.contains("tam") -> "Tamil"
+            text.contains("telugu") || text.contains("tel") -> "Telugu"
+            text.contains("kannada") || text.contains("kan") -> "Kannada"
+            text.contains("malayalam") || text.contains("mal") -> "Malayalam"
+            text.contains("bengali") || text.contains("ben") -> "Bengali"
+            text.contains("marathi") || text.contains("mar") -> "Marathi"
+            text.contains("punjabi") || text.contains("pan") -> "Punjabi"
+            text.contains("gujarati") || text.contains("guj") -> "Gujarati"
+            text.contains("korean") || text.contains("kor") -> "Korean"
+            text.contains("japanese") || text.contains("jap") -> "Japanese"
+            text.contains("spanish") || text.contains("spa") -> "Spanish"
+            text.contains("french") || text.contains("fre") -> "French"
+            text.contains("german") || text.contains("ger") -> "German"
+            else -> null
+        }
+    }
+
+    private fun extractQualityNumber(qualityVal: Int?, name: String?, url: String?): Int {
+        if (qualityVal != null && qualityVal > 0 && qualityVal != Qualities.Unknown.value) {
+            return qualityVal
+        }
+        val text = "${name ?: ""} ${url ?: ""}".lowercase()
+        val match = Regex("(\\d{3,4})p?").find(text)
+        return match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1080
+    }
+
     private val currentMeta: Any? get() = viewModel.state.generatorState?.meta
     private val nextMeta: Any? get() = viewModel.state.generatorState?.nextMeta
 
@@ -231,9 +268,15 @@ class GeneratorPlayer : FullScreenPlayer() {
         val tracks = player.getVideoTracks()
         playerBinding?.playerTracksBtt?.isVisible =
             tracks.allVideoTracks.size > 1 || tracks.allAudioTracks.size > 1
-        // Only set the preferred language if it is available.
-        // Otherwise, it may give some users audio track init failed!
-        if (tracks.allAudioTracks.any { it.language == preferredAudioTrackLanguage }) {
+
+        val hindiTrack = tracks.allAudioTracks.firstOrNull {
+            it.language?.equals("hin", ignoreCase = true) == true ||
+            it.language?.equals("hi", ignoreCase = true) == true ||
+            it.label?.contains("hindi", ignoreCase = true) == true
+        }
+        if (hindiTrack != null && (userSelectedLanguage == "Hindi" || preferredAudioTrackLanguage == null)) {
+            player.setPreferredAudioTrack(hindiTrack.language, hindiTrack.id, hindiTrack.formatIndex)
+        } else if (tracks.allAudioTracks.any { it.language == preferredAudioTrackLanguage }) {
             player.setPreferredAudioTrack(preferredAudioTrackLanguage)
         }
         updatePlayerInfo()
@@ -1419,10 +1462,6 @@ class GeneratorPlayer : FullScreenPlayer() {
             val isPlaying = player.getIsPlaying()
             player.handleEvent(CSPlayerEvent.Pause, PlayerEventSource.UI)
 
-            val tracks = player.getVideoTracks()
-            val currentVideoTracks = tracks.allVideoTracks.sortedBy { (it.height ?: 0) * -1 }
-            val currentVideo = tracks.currentVideoTrack
-
             val binding = DialogPlayerSelectionSheetBinding.inflate(LayoutInflater.from(ctx))
             binding.selectionDialogTitle.text = "Quality"
 
@@ -1436,14 +1475,50 @@ class GeneratorPlayer : FullScreenPlayer() {
 
             data class QualityItem(
                 val name: String,
-                val subtext: String? = null,
                 val isSelected: Boolean,
                 val onSelect: () -> Unit
             )
 
             val items = mutableListOf<QualityItem>()
 
-            if (currentVideoTracks.size > 1) {
+            val allLinks = viewModel.state.links
+            val tracks = player.getVideoTracks()
+            val currentVideoTracks = tracks.allVideoTracks.sortedBy { (it.height ?: 0) * -1 }
+            val currentVideo = tracks.currentVideoTrack
+
+            // Check if links exist for the user's selected language
+            val linksForCurrentLang = allLinks.filter {
+                val lLang = extractLanguage(it.first?.name, it.first?.url)
+                lLang == null || lLang.equals(userSelectedLanguage, ignoreCase = true)
+            }.ifEmpty { allLinks }
+
+            val hasLinkQualities = linksForCurrentLang.size > 1 && linksForCurrentLang.any {
+                it.first?.quality != null || it.first?.name?.contains(Regex("\\d{3,4}p?")) == true
+            }
+
+            if (hasLinkQualities) {
+                val uniqueQualities = linksForCurrentLang.map {
+                    extractQualityNumber(it.first?.quality, it.first?.name, it.first?.url)
+                }.distinct().sortedDescending()
+
+                uniqueQualities.forEach { q ->
+                    val isSelected = q == userSelectedQuality
+                    items.add(QualityItem(
+                        name = "${q}p",
+                        isSelected = isSelected,
+                        onSelect = {
+                            userSelectedQuality = q
+                            val matchedLink = linksForCurrentLang.minByOrNull {
+                                val linkQ = extractQualityNumber(it.first?.quality, it.first?.name, it.first?.url)
+                                Math.abs(linkQ - q)
+                            }
+                            if (matchedLink != null) {
+                                loadLink(matchedLink, true)
+                            }
+                        }
+                    ))
+                }
+            } else if (currentVideoTracks.size > 1) {
                 val isAutoSelected = currentVideo == null
                 items.add(QualityItem(
                     name = "Auto",
@@ -1464,6 +1539,9 @@ class GeneratorPlayer : FullScreenPlayer() {
                         name = label,
                         isSelected = isSelected,
                         onSelect = {
+                            if (track.height != null && track.height != NO_VALUE) {
+                                userSelectedQuality = track.height
+                            }
                             val width = track.width ?: NO_VALUE
                             val height = track.height ?: NO_VALUE
                             if (width != NO_VALUE && height != NO_VALUE) {
@@ -1473,38 +1551,22 @@ class GeneratorPlayer : FullScreenPlayer() {
                     ))
                 }
             } else {
-                val sortedLinks = viewModel.state.links.mapNotNull { it.first }
-                if (sortedLinks.size > 1) {
-                    sortedLinks.forEach { link ->
-                        val label = Qualities.getStringByInt(link.quality)
-                        val isSelected = currentSelectedLink?.first?.url == link.url
-                        items.add(QualityItem(
-                            name = label,
-                            subtext = link.name.takeIf { it.isNotBlank() && it != label },
-                            isSelected = isSelected,
-                            onSelect = {
-                                val match = viewModel.state.links.firstOrNull { it.first?.url == link.url }
-                                if (match != null) {
-                                    loadLink(match, true)
-                                }
+                listOf(1080, 720, 480, 360, 240).forEach { q ->
+                    items.add(QualityItem(
+                        name = "${q}p",
+                        isSelected = q == userSelectedQuality,
+                        onSelect = {
+                            userSelectedQuality = q
+                            val w = when (q) {
+                                1080 -> 1920
+                                720 -> 1280
+                                480 -> 854
+                                360 -> 640
+                                else -> 426
                             }
-                        ))
-                    }
-                } else {
-                    val currentH = currentVideo?.height
-                    val currentLabel = if (currentH != null && currentH > 0) "${currentH}p" else "1080p"
-                    items.add(QualityItem("360p", null, currentLabel == "360p") {
-                        player.setMaxVideoSize(640, 360, null)
-                    })
-                    items.add(QualityItem("480p", null, currentLabel == "480p") {
-                        player.setMaxVideoSize(854, 480, null)
-                    })
-                    items.add(QualityItem("720p", null, currentLabel == "720p") {
-                        player.setMaxVideoSize(1280, 720, null)
-                    })
-                    items.add(QualityItem("1080p", null, currentLabel == "1080p") {
-                        player.setMaxVideoSize(1920, 1080, null)
-                    })
+                            player.setMaxVideoSize(w, q, null)
+                        }
+                    ))
                 }
             }
 
@@ -1512,10 +1574,7 @@ class GeneratorPlayer : FullScreenPlayer() {
             items.forEach { item ->
                 val rowBinding = ItemPlayerSelectionRadioBinding.inflate(LayoutInflater.from(ctx), binding.selectionItemsContainer, false)
                 rowBinding.selectionItemText.text = item.name
-                if (!item.subtext.isNullOrBlank()) {
-                    rowBinding.selectionItemSubtext.text = item.subtext
-                    rowBinding.selectionItemSubtext.visibility = View.VISIBLE
-                }
+                rowBinding.selectionItemSubtext.visibility = View.GONE
                 rowBinding.selectionItemRadio.isChecked = item.isSelected
                 radioButtons.add(rowBinding.selectionItemRadio)
 
@@ -1551,10 +1610,6 @@ class GeneratorPlayer : FullScreenPlayer() {
             val isPlaying = player.getIsPlaying()
             player.handleEvent(CSPlayerEvent.Pause, PlayerEventSource.UI)
 
-            val tracks = player.getVideoTracks()
-            val currentAudioTracks = tracks.allAudioTracks
-            val currentAudio = tracks.currentAudioTrack
-
             val binding = DialogPlayerSelectionSheetBinding.inflate(LayoutInflater.from(ctx))
             binding.selectionDialogTitle.text = "Audio"
 
@@ -1568,55 +1623,71 @@ class GeneratorPlayer : FullScreenPlayer() {
 
             data class AudioItem(
                 val name: String,
-                val subtext: String? = null,
                 val isSelected: Boolean,
                 val onSelect: () -> Unit
             )
 
             val items = mutableListOf<AudioItem>()
 
-            if (currentAudioTracks.isNotEmpty()) {
-                currentAudioTracks.forEach { track ->
-                    val language = (
-                        track.language?.trim()?.let { raw ->
-                            fromTagToLanguageName(raw)
-                                ?: fromTagToLanguageName(raw.replace('_', '-').substringBefore('-').lowercase())
-                                ?: raw
-                        }
-                        ?: track.label
-                        ?: "Audio"
-                    ).replaceFirstChar { it.uppercaseChar() }
+            val allLinks = viewModel.state.links
+            val linkLanguages = allLinks.mapNotNull {
+                extractLanguage(it.first?.name, it.first?.url)
+            }.distinct()
 
-                    val isSelected = track.id == currentAudio?.id && track.formatIndex == currentAudio?.formatIndex
+            val tracks = player.getVideoTracks()
+            val currentAudioTracks = tracks.allAudioTracks
+            val exoLanguages = currentAudioTracks.mapNotNull { track ->
+                track.language?.trim()?.let { raw ->
+                    fromTagToLanguageName(raw)
+                        ?: fromTagToLanguageName(raw.replace('_', '-').substringBefore('-').lowercase())
+                        ?: raw
+                } ?: track.label
+            }.map { it.replaceFirstChar { c -> c.uppercaseChar() } }.distinct()
 
-                    val codec = audioCodecName(track.sampleMimeType)
-                    val channels = when (track.channelCount) {
-                        1 -> "Mono"
-                        2 -> "Stereo"
-                        6 -> "5.1"
-                        8 -> "7.1"
-                        else -> null
-                    }
-                    val extra = listOfNotNull(channels, codec.takeIf { it.isNotBlank() }?.uppercase()).joinToString(" • ").takeIf { it.isNotBlank() }
+            val combinedLanguages = (linkLanguages + exoLanguages).distinct().toMutableList()
 
-                    items.add(AudioItem(
-                        name = language,
-                        subtext = extra,
-                        isSelected = isSelected,
-                        onSelect = {
-                            player.setPreferredAudioTrack(
-                                track.language,
-                                track.id,
-                                track.formatIndex
-                            )
-                        }
-                    ))
-                }
-            } else {
+            if (combinedLanguages.isEmpty()) {
+                combinedLanguages.add("Hindi")
+                combinedLanguages.add("English")
+            } else if (!combinedLanguages.contains("Hindi") && allLinks.any { it.first?.name?.contains("hin", ignoreCase = true) == true }) {
+                combinedLanguages.add(0, "Hindi")
+            }
+
+            if (combinedLanguages.contains("Hindi")) {
+                combinedLanguages.remove("Hindi")
+                combinedLanguages.add(0, "Hindi")
+            }
+
+            combinedLanguages.forEach { lang ->
+                val isSelected = lang.equals(userSelectedLanguage, ignoreCase = true)
                 items.add(AudioItem(
-                    name = "Hindi",
-                    isSelected = true,
-                    onSelect = {}
+                    name = lang,
+                    isSelected = isSelected,
+                    onSelect = {
+                        userSelectedLanguage = lang
+
+                        val matchingAudioTrack = currentAudioTracks.firstOrNull { t ->
+                            val tLang = (t.language?.let { fromTagToLanguageName(it) } ?: t.label ?: "")
+                            tLang.contains(lang, ignoreCase = true) || (lang == "Hindi" && (t.language?.contains("hi") == true || t.label?.contains("hindi", ignoreCase = true) == true))
+                        }
+                        if (matchingAudioTrack != null) {
+                            player.setPreferredAudioTrack(matchingAudioTrack.language, matchingAudioTrack.id, matchingAudioTrack.formatIndex)
+                        }
+
+                        if (allLinks.size > 1) {
+                            val matchedLinksForLang = allLinks.filter {
+                                val lLang = extractLanguage(it.first?.name, it.first?.url)
+                                lLang?.equals(lang, ignoreCase = true) == true
+                            }
+                            if (matchedLinksForLang.isNotEmpty()) {
+                                val targetLink = matchedLinksForLang.minByOrNull {
+                                    val q = extractQualityNumber(it.first?.quality, it.first?.name, it.first?.url)
+                                    Math.abs(q - userSelectedQuality)
+                                } ?: matchedLinksForLang.first()
+                                loadLink(targetLink, true)
+                            }
+                        }
+                    }
                 ))
             }
 
@@ -1624,10 +1695,7 @@ class GeneratorPlayer : FullScreenPlayer() {
             items.forEach { item ->
                 val rowBinding = ItemPlayerSelectionRadioBinding.inflate(LayoutInflater.from(ctx), binding.selectionItemsContainer, false)
                 rowBinding.selectionItemText.text = item.name
-                if (!item.subtext.isNullOrBlank()) {
-                    rowBinding.selectionItemSubtext.text = item.subtext
-                    rowBinding.selectionItemSubtext.visibility = View.VISIBLE
-                }
+                rowBinding.selectionItemSubtext.visibility = View.GONE
                 rowBinding.selectionItemRadio.isChecked = item.isSelected
                 radioButtons.add(rowBinding.selectionItemRadio)
 
@@ -1864,17 +1932,42 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
 
         val links = viewModel.state.sortLinks(currentQualityProfile)
+        val usable = links.filter { it.shouldUseLink }
 
-        val firstAvailableLink = links.firstOrNull { it.shouldUseLink }?.link
-        if (firstAvailableLink == null) {
+        // Prefer Hindi link by default!
+        val hindiLinks = usable.filter {
+            val lang = extractLanguage(it.link.first?.name, it.link.first?.url)
+            lang == "Hindi"
+        }
+
+        val linkToLoad = if (hindiLinks.isNotEmpty()) {
+            userSelectedLanguage = "Hindi"
+            hindiLinks.maxByOrNull {
+                extractQualityNumber(it.link.first?.quality, it.link.first?.name, it.link.first?.url)
+            }?.link ?: hindiLinks.first().link
+        } else {
+            val first = usable.firstOrNull()?.link
+            if (first != null) {
+                val detected = extractLanguage(first.first?.name, first.first?.url)
+                if (detected != null) {
+                    userSelectedLanguage = detected
+                }
+            }
+            first
+        }
+
+        if (linkToLoad == null) {
             noLinksFound()
             return
         }
+
+        userSelectedQuality = extractQualityNumber(linkToLoad.first?.quality, linkToLoad.first?.name, linkToLoad.first?.url)
+
         // Atomic operation to prevent double loading
         if (!isPlayerActive.compareAndSet(false, true)) {
             return
         }
-        loadLink(firstAvailableLink, false)
+        loadLink(linkToLoad, false)
         showPlayerMetadata()
     }
 
