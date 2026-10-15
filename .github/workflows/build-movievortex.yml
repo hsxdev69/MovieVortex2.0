@@ -14,6 +14,7 @@ concurrency:
 jobs:
   build-apk:
     name: Build MovieVortex APK
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
