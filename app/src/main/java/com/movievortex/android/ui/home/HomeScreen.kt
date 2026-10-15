@@ -297,7 +297,7 @@ fun FeaturedHero(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, top = 4.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp)
             .clip(RoundedCornerShape(24.dp))
             .height(430.dp)
             .clickable { onMediaClick(activeItem) }
