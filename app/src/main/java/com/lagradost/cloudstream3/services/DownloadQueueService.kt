@@ -82,9 +82,12 @@ class DownloadQueueService : Service() {
 
 
     private val baseNotification by lazy {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, com.movievortex.android.MovieVortexActivity::class.java).apply {
+            putExtra("NAVIGATE_TO", "downloads")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val pendingIntent =
-            PendingIntentCompat.getActivity(this, 0, intent, 0, false)
+            PendingIntentCompat.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
         val activeDownloads = resources.getQuantityString(R.plurals.downloads_active, 0).format(0)
         val activeQueue = resources.getQuantityString(R.plurals.downloads_queued, 0).format(0)

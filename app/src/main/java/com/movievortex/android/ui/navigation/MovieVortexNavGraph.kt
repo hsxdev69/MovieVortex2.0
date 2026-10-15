@@ -116,11 +116,19 @@ fun MovieVortexNavGraph(
     libraryController: LibraryController = viewModel(),
     settingsController: SettingsController,
     isFirstLaunch: Boolean = false,
+    initialDestination: MainDestination = MainDestination.MoviesTv,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Splash) }
-    var currentDestination by remember { mutableStateOf(MainDestination.MoviesTv) }
+    var currentDestination by remember(initialDestination) { mutableStateOf(initialDestination) }
+
+    androidx.compose.runtime.LaunchedEffect(initialDestination) {
+        currentDestination = initialDestination
+        if (initialDestination == MainDestination.Downloads) {
+            currentScreen = AppScreen.Main
+        }
+    }
 
     val downloadState by downloadController.uiState.collectAsState()
 

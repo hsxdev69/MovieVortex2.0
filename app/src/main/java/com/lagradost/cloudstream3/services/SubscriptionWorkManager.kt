@@ -180,13 +180,13 @@ class SubscriptionWorkManager(val context: Context, workerParams: WorkerParamete
                             savedData.name
                         ).asString(context)
 
-                        val intent = Intent(context, MainActivity::class.java).apply {
+                        val intent = Intent(context, com.movievortex.android.MovieVortexActivity::class.java).apply {
                             data = savedData.url.toUri()
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }.putExtra(MainActivity.API_NAME_EXTRA_KEY, api.name)
 
                         val pendingIntent =
-                            PendingIntentCompat.getActivity(context, 0, intent, 0, false)
+                            PendingIntentCompat.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
                         val poster = ioWork {
                             savedData.posterUrl?.let { url ->

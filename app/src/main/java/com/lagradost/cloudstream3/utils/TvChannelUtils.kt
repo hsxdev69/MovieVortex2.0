@@ -136,7 +136,7 @@ object TvChannelUtils {
     }
 
     fun createTvChannel(context: Context) {
-        val componentName = ComponentName(context, MainActivity::class.java)
+        val componentName = ComponentName(context, com.movievortex.android.MovieVortexActivity::class.java)
         val iconUri = "android.resource://${context.packageName}/mipmap/ic_launcher".toUri()
         val inputId = TvContractCompat.buildInputId(componentName)
         val channel = Channel.Builder()

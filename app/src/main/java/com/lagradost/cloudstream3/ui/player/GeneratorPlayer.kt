@@ -363,8 +363,8 @@ class GeneratorPlayer : FullScreenPlayer() {
                     return PendingIntentCompat.getActivity(
                         context,
                         0,
-                        Intent(context, MainActivity::class.java),
-                        0,
+                        Intent(context, com.movievortex.android.MovieVortexActivity::class.java),
+                        PendingIntent.FLAG_UPDATE_CURRENT,
                         false
                     )
                 }

@@ -276,12 +276,13 @@ object VideoDownloadManager {
             }
 
             if (source != null) {
-                val intent = Intent(context, MainActivity::class.java).apply {
+                val intent = Intent(context, com.movievortex.android.MovieVortexActivity::class.java).apply {
+                    putExtra("NAVIGATE_TO", "downloads")
                     data = source.toUri()
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 val pendingIntent =
-                    PendingIntentCompat.getActivity(context, 0, intent, 0, false)
+                    PendingIntentCompat.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
                 builder.setContentIntent(pendingIntent)
             }
 

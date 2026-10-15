@@ -28,9 +28,11 @@ class PackageInstallerService : Service() {
     private var installer: ApkInstaller? = null
 
     private val baseNotification by lazy {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, com.movievortex.android.MovieVortexActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val pendingIntent =
-            PendingIntentCompat.getActivity(this, 0, intent, 0, false)
+            PendingIntentCompat.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
         NotificationCompat.Builder(this, UPDATE_CHANNEL_ID)
             .setAutoCancel(false)

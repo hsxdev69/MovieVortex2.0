@@ -214,8 +214,8 @@ class AccountSelectActivity : FragmentActivity(), BiometricCallback {
     @SuppressLint("UnsafeIntentLaunch")
     private fun navigateToMainActivity() {
         hasLoggedIn = true
-        // We want to propagate any intent we get here to MainActivity since this is just an intermediary
-        openActivity(MainActivity::class.java, baseIntent = intent)
+        // We want to propagate any intent we get here to MovieVortexActivity since this is just an intermediary
+        openActivity(com.movievortex.android.MovieVortexActivity::class.java, baseIntent = intent)
         finish() // Finish the account selection activity
     }
 

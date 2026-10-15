@@ -1,6 +1,5 @@
 package com.movievortex.android.controller
 
-import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
@@ -10,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.AnimeLoadResponse
+import com.lagradost.cloudstream3.CloudStreamApp
 import com.lagradost.cloudstream3.MovieLoadResponse
 import com.lagradost.cloudstream3.TvSeriesLoadResponse
 import com.lagradost.cloudstream3.TvType
@@ -19,6 +19,10 @@ import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper
 import com.lagradost.cloudstream3.ui.player.SubtitleData
 import com.lagradost.cloudstream3.ui.result.ResultEpisode
 import com.lagradost.cloudstream3.ui.result.VideoWatchState
+import com.lagradost.cloudstream3.utils.DOWNLOAD_EPISODE_CACHE
+import com.lagradost.cloudstream3.utils.DOWNLOAD_HEADER_CACHE
+import com.lagradost.cloudstream3.utils.DataStore.getKey
+import com.lagradost.cloudstream3.utils.DataStore.getKeys
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.downloader.DownloadObjects
 import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager
@@ -28,7 +32,6 @@ import com.movievortex.android.model.MediaEpisode
 import com.movievortex.android.model.MediaType
 import com.movievortex.android.model.MovieVortexMedia
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,12 +47,11 @@ data class DownloadUiItem(
     val quality: String = "1080p",
     val fileSizeBytes: Long = 0L,
     val downloadedBytes: Long = 0L,
-    val progress: Float = 0f, // 0.0 to 1.0 calculated strictly from actual transferred bytes
+    val progress: Float = 0f, // 0.0 to 1.0 strictly calculated from actual transferred bytes
     val speedBytesPerSec: Long = 0L,
     val state: MediaDownloadState = MediaDownloadState.Queued,
     val localFilePath: String? = null,
     val errorMessage: String? = null,
-    val downloadManagerId: Long? = null,
     val originalMedia: MovieVortexMedia? = null,
     val originalEpisode: MediaEpisode? = null
 )
@@ -82,7 +84,7 @@ class DownloadController : ViewModel() {
     }
 
     init {
-        // Attach real listeners to CloudStream downloader events
+        // Attach listeners to MovieVortex's internal downloader events
         VideoDownloadManager.downloadProgressEvent += downloadProgressListener
         VideoDownloadManager.downloadStatusEvent += downloadStatusListener
         VideoDownloadManager.downloadDeleteEvent += downloadDeleteListener
@@ -119,7 +121,7 @@ class DownloadController : ViewModel() {
     }
 
     /**
-     * Refreshes downloads list by scanning offline files and reading persistent queue state.
+     * Refreshes downloads list by scanning local files and reading internal download queue state.
      */
     fun loadDownloads() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -135,7 +137,6 @@ class DownloadController : ViewModel() {
                                 file.extension.equals("webm", true) ||
                                 file.extension.equals("avi", true))
                     }?.forEach { file ->
-                        // Only add verified non-corrupt media files
                         if (!isHtmlOrInvalidMediaFile(file)) {
                             val displayTitle = file.nameWithoutExtension.replace("_", " ")
                             downloadItems.add(
@@ -158,7 +159,47 @@ class DownloadController : ViewModel() {
                 Log.e(TAG, "Error scanning local downloads", e)
             }
 
-            // 2. Active downloads from CloudStream persistent queue
+            // 2. Scan internal Download cache
+            try {
+                val ctx = CloudStreamApp.context
+                if (ctx != null) {
+                    ctx.getKeys(DOWNLOAD_EPISODE_CACHE)?.forEach { key ->
+                        val cachedEp = ctx.getKey<DownloadObjects.DownloadEpisodeCached>(key)
+                        if (cachedEp != null) {
+                            val info = VideoDownloadManager.getDownloadFileInfo(ctx, cachedEp.id)
+                            if (info != null && info.fileLength > 1024L) {
+                                val title = cachedEp.name ?: "Episode ${cachedEp.episode}"
+                                val header = ctx.getKey<DownloadObjects.DownloadHeaderCached>(
+                                    DOWNLOAD_HEADER_CACHE,
+                                    cachedEp.parentId.toString()
+                                )
+                                val fullTitle = if (header != null && !title.startsWith(header.name)) "${header.name} - $title" else title
+                                if (downloadItems.none { it.id == cachedEp.id.toString() || it.title == fullTitle }) {
+                                    val isDone = info.totalBytes > 0 && info.fileLength >= info.totalBytes
+                                    val prog = if (info.totalBytes > 0) (info.fileLength.toFloat() / info.totalBytes.toFloat()).coerceIn(0f, 1f) else 1.0f
+                                    downloadItems.add(
+                                        DownloadUiItem(
+                                            id = cachedEp.id.toString(),
+                                            title = fullTitle,
+                                            poster = cachedEp.poster ?: header?.poster,
+                                            quality = "1080p",
+                                            fileSizeBytes = info.totalBytes,
+                                            downloadedBytes = info.fileLength,
+                                            progress = prog,
+                                            state = if (isDone) MediaDownloadState.Completed else MediaDownloadState.Downloading,
+                                            localFilePath = info.path.toString()
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading download cache", e)
+            }
+
+            // 3. Active downloads from internal persistent queue
             try {
                 val queue = DownloadQueueManager.queue.value
                 queue.forEach { queueWrapper ->
@@ -169,8 +210,9 @@ class DownloadController : ViewModel() {
                     val poster = item?.resultPoster ?: resumeEp?.poster
                     val cleanName = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
 
-                    if (downloadItems.none { it.title == title }) {
+                    if (downloadItems.none { it.title == title || it.id == id.toString() }) {
                         downloadItems.add(
+                            0,
                             DownloadUiItem(
                                 id = id.toString(),
                                 title = title,
@@ -186,10 +228,10 @@ class DownloadController : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading queue", e)
+                Log.e(TAG, "Error loading internal queue", e)
             }
 
-            // Preserve any existing downloading or failed items that are actively tracked in memory
+            // Preserve active in-memory states (downloading, failed, paused)
             val activeInMemory = _uiState.value.items.filter {
                 it.state == MediaDownloadState.Downloading || it.state == MediaDownloadState.Failed || it.state == MediaDownloadState.Paused
             }
@@ -295,7 +337,6 @@ class DownloadController : ViewModel() {
     fun retryDownload(context: Context, item: DownloadUiItem) {
         val media = item.originalMedia
         if (media != null) {
-            // Remove previous failed entry and restart download
             _uiState.value = _uiState.value.copy(
                 items = _uiState.value.items.filter { it.id != item.id }
             )
@@ -308,31 +349,27 @@ class DownloadController : ViewModel() {
     fun deleteDownload(id: String) {
         val itemToDelete = _uiState.value.items.find { it.id == id }
 
-        // 1. Cancel CloudStream download queue if active
         val intId = id.toIntOrNull()
         if (intId != null) {
             try {
                 DownloadQueueManager.cancelDownload(intId)
+                CloudStreamApp.context?.let { ctx ->
+                    VideoDownloadManager.deleteFileAndUpdateSettings(ctx, intId)
+                }
             } catch (e: Exception) {
-                Log.w(TAG, "Error cancelling queue download for id $id: ${e.message}")
+                Log.w(TAG, "Error cancelling download for id $id: ${e.message}")
             }
         }
 
-        // 2. Cancel Android DownloadManager task if active
-        if (itemToDelete?.downloadManagerId != null) {
-            try {
-                val dm = com.lagradost.cloudstream3.CloudStreamApp.context?.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
-                dm?.remove(itemToDelete.downloadManagerId)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error removing DownloadManager task: ${e.message}")
-            }
-        }
-
-        // 3. Delete physical file if present
+        // Delete physical file if present
         if (itemToDelete?.localFilePath != null) {
             try {
-                val f = File(itemToDelete.localFilePath)
-                if (f.exists()) f.delete()
+                if (itemToDelete.localFilePath.startsWith("content://")) {
+                    CloudStreamApp.context?.contentResolver?.delete(Uri.parse(itemToDelete.localFilePath), null, null)
+                } else {
+                    val f = File(itemToDelete.localFilePath)
+                    if (f.exists()) f.delete()
+                }
             } catch (_: Exception) {}
         }
 
@@ -343,8 +380,9 @@ class DownloadController : ViewModel() {
     }
 
     /**
-     * Executes real download pipeline:
-     * Media Selection -> Provider Resolution -> Stream Validation -> Queuing / Direct Download -> Verification.
+     * Executes real in-app download pipeline:
+     * Media Selection -> Provider Resolution -> Stream Validation -> In-App Queue -> Verification.
+     * Keeps all downloads and notifications strictly inside MovieVortex without invoking external apps.
      */
     fun downloadMedia(
         context: Context,
@@ -398,7 +436,6 @@ class DownloadController : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Find matching API provider
                 val api = APIHolder.getApiFromNameNull(media.providerApiName)
                     ?: APIHolder.apis.firstOrNull { media.rawUrl.startsWith(it.mainUrl) }
                     ?: APIHolder.apis.firstOrNull()
@@ -443,7 +480,6 @@ class DownloadController : ViewModel() {
                             extractedSubs.add(PlayerSubtitleHelper.getSubtitleData(sub))
                         },
                         callback = { link ->
-                            // Strictly filter out invalid web pages or non-media URLs
                             val urlLower = link.url.lowercase()
                             if (link.url.isNotBlank() &&
                                 (urlLower.startsWith("http://") || urlLower.startsWith("https://")) &&
@@ -490,7 +526,7 @@ class DownloadController : ViewModel() {
                     videoWatchState = VideoWatchState.None
                 )
 
-                // 1. Queue into CloudStream's native DownloadQueueManager (supports HLS .m3u8, DASH, & multi-part downloads)
+                // Queue into MovieVortex's internal in-app downloader
                 val queueItem = DownloadObjects.DownloadQueueItem(
                     episode = resultEp,
                     isMovie = media.type == MediaType.Movie,
@@ -503,59 +539,12 @@ class DownloadController : ViewModel() {
                     links = if (extractedLinks.isNotEmpty()) extractedLinks else null,
                     subs = if (extractedSubs.isNotEmpty()) extractedSubs else null
                 )
+
                 DownloadQueueManager.addToQueue(queueItem.toWrapper())
+                updateItemState(newId, MediaDownloadState.Downloading, null)
 
-                // 2. Check for direct .mp4 or .mkv link for Android DownloadManager
-                val directLink = extractedLinks.firstOrNull { !it.isM3u8 && (it.url.contains(".mp4") || it.url.contains(".mkv")) }
-                val directVideoUrl = streamUrl ?: directLink?.url
-
-                if (directVideoUrl != null && (directVideoUrl.startsWith("http://") || directVideoUrl.startsWith("https://"))) {
-                    val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
-                    if (dm != null) {
-                        // Ensure output directory exists
-                        val outDir = File("/storage/emulated/0/Download/$DOWNLOAD_DIR_NAME")
-                        if (!outDir.exists()) outDir.mkdirs()
-
-                        val request = DownloadManager.Request(Uri.parse(directVideoUrl))
-                            .setTitle(title)
-                            .setDescription("MovieVortex Offline Download")
-                            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "$DOWNLOAD_DIR_NAME/$cleanName.mp4")
-                            .setAllowedOverMetered(true)
-                            .setAllowedOverRoaming(true)
-
-                        if (directLink != null) {
-                            if (directLink.referer.isNotBlank()) {
-                                request.addRequestHeader("Referer", directLink.referer)
-                            }
-                            directLink.headers.forEach { (k, v) ->
-                                request.addRequestHeader(k, v)
-                            }
-                        }
-
-                        val dmId = dm.enqueue(request)
-                        Log.i(TAG, "Enqueued to DownloadManager with ID: $dmId")
-
-                        // Update item with downloadManagerId and mark Downloading
-                        _uiState.value = _uiState.value.copy(
-                            items = _uiState.value.items.map {
-                                if (it.id == newId) it.copy(downloadManagerId = dmId, state = MediaDownloadState.Downloading) else it
-                            }
-                        )
-
-                        // Launch real byte tracking loop for Android DownloadManager
-                        monitorDownloadManager(context, dm, dmId, newId, localPath)
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Download started: $title", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    // Handled by CloudStream VideoDownloadManager HLS / Queue
-                    updateItemState(newId, MediaDownloadState.Downloading, null)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Queued with stream downloader: $title", Toast.LENGTH_SHORT).show()
-                    }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "MovieVortex download started: $title", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 val errMsg = "Download failed: ${e.message ?: "Unknown error"}"
@@ -575,110 +564,5 @@ class DownloadController : ViewModel() {
             },
             activeDownloadsCount = _uiState.value.items.count { it.state == MediaDownloadState.Downloading }
         )
-    }
-
-    /**
-     * Polls Android DownloadManager for actual transferred bytes and status.
-     */
-    private fun monitorDownloadManager(
-        context: Context,
-        dm: DownloadManager,
-        dmId: Long,
-        itemId: String,
-        localPath: String
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            var isFinished = false
-            while (!isFinished) {
-                delay(1000)
-                try {
-                    val query = DownloadManager.Query().setFilterById(dmId)
-                    val cursor = dm.query(query)
-                    if (cursor != null && cursor.moveToFirst()) {
-                        val bytesSoFar = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                        val totalBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                        val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                        cursor.close()
-
-                        val prog = if (totalBytes > 0L) (bytesSoFar.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f) else 0f
-
-                        when (status) {
-                            DownloadManager.STATUS_RUNNING -> {
-                                _uiState.value = _uiState.value.copy(
-                                    items = _uiState.value.items.map {
-                                        if (it.id == itemId) it.copy(
-                                            downloadedBytes = bytesSoFar,
-                                            fileSizeBytes = if (totalBytes > 0L) totalBytes else it.fileSizeBytes,
-                                            progress = prog,
-                                            state = MediaDownloadState.Downloading
-                                        ) else it
-                                    }
-                                )
-                            }
-                            DownloadManager.STATUS_PAUSED -> {
-                                _uiState.value = _uiState.value.copy(
-                                    items = _uiState.value.items.map {
-                                        if (it.id == itemId) it.copy(
-                                            downloadedBytes = bytesSoFar,
-                                            fileSizeBytes = if (totalBytes > 0L) totalBytes else it.fileSizeBytes,
-                                            progress = prog,
-                                            state = MediaDownloadState.Paused
-                                        ) else it
-                                    }
-                                )
-                            }
-                            DownloadManager.STATUS_SUCCESSFUL -> {
-                                isFinished = true
-                                val destFile = File(localPath)
-                                if (destFile.exists() && destFile.length() > 1024L && !isHtmlOrInvalidMediaFile(destFile)) {
-                                    _uiState.value = _uiState.value.copy(
-                                        items = _uiState.value.items.map {
-                                            if (it.id == itemId) it.copy(
-                                                downloadedBytes = destFile.length(),
-                                                fileSizeBytes = destFile.length(),
-                                                progress = 1.0f,
-                                                state = MediaDownloadState.Completed,
-                                                localFilePath = destFile.absolutePath,
-                                                errorMessage = null
-                                            ) else it
-                                        },
-                                        activeDownloadsCount = _uiState.value.items.count { it.state == MediaDownloadState.Downloading }
-                                    )
-                                } else {
-                                    if (destFile.exists()) destFile.delete()
-                                    _uiState.value = _uiState.value.copy(
-                                        items = _uiState.value.items.map {
-                                            if (it.id == itemId) it.copy(
-                                                state = MediaDownloadState.Failed,
-                                                errorMessage = "Downloaded file is invalid or empty HTML response."
-                                            ) else it
-                                        },
-                                        activeDownloadsCount = _uiState.value.items.count { it.state == MediaDownloadState.Downloading }
-                                    )
-                                }
-                            }
-                            DownloadManager.STATUS_FAILED -> {
-                                isFinished = true
-                                val errorMsg = "DownloadManager error (code $reason)"
-                                _uiState.value = _uiState.value.copy(
-                                    items = _uiState.value.items.map {
-                                        if (it.id == itemId) it.copy(
-                                            state = MediaDownloadState.Failed,
-                                            errorMessage = errorMsg
-                                        ) else it
-                                    },
-                                    activeDownloadsCount = _uiState.value.items.count { it.state == MediaDownloadState.Downloading }
-                                )
-                            }
-                        }
-                    } else {
-                        cursor?.close()
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error checking DownloadManager progress: ${e.message}")
-                }
-            }
-        }
     }
 }

@@ -1188,6 +1188,18 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val redirectIntent = Intent(this, com.movievortex.android.MovieVortexActivity::class.java).apply {
+            data = this@MainActivity.intent?.data
+            this@MainActivity.intent?.extras?.let { putExtras(it) }
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        startActivity(redirectIntent)
+        finish()
+        super.onCreate(savedInstanceState)
+        return
+    }
+
+    private fun legacyOnCreate(savedInstanceState: Bundle?) {
         app.initClient(this, ignoreSSL = false)
         @OptIn(UnsafeSSL::class)
         insecureApp.initClient(this, ignoreSSL = true)
