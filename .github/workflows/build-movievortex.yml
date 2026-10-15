@@ -14,7 +14,8 @@ concurrency:
 jobs:
   build-apk:
     name: Build MovieVortex APK
-    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
@@ -55,3 +56,18 @@ jobs:
           path: app/build/outputs/apk/stable/release/*.apk
           retention-days: 30
           if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v2.0-latest
+          name: "MovieVortex 2.0 Latest"
+          body: |
+            ### MovieVortex 2.0 - Latest Build
+            - Complete Figma UI (Golden Amber Accents, Floating Nav Island, Rounded Hero)
+            - Fullscreen / Portrait YouTube-style rotation fix
+            - Hold 2X speed indicator
+          draft: false
+          prerelease: false
+          files: app/build/outputs/apk/stable/release/*.apk
