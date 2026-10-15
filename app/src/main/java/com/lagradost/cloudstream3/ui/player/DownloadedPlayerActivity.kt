@@ -76,7 +76,7 @@ class DownloadedPlayerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!isLayout(TV or EMULATOR)) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
         }
         CommonActivity.loadThemes(this)
         CommonActivity.init(this)

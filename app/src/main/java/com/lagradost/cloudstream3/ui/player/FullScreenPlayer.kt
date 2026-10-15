@@ -1222,6 +1222,11 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
 
+        if (!isLayout(TV or EMULATOR)) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            rotatedManually = false
+        }
+
         // If we rotate the device we need to recalculate the zoom
         val gh = playerHostView?.gestureHelper ?: return
         val matrix = gh.zoomMatrix
