@@ -85,11 +85,19 @@ fun launchOfflinePlayer(context: Context, localFilePath: String?) {
     if (localFilePath.isNullOrBlank()) return
     try {
         val file = File(localFilePath)
-        val uri = Uri.fromFile(file)
+        val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            try {
+                androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            } catch (e: Exception) {
+                Uri.fromFile(file)
+            }
+        } else {
+            Uri.fromFile(file)
+        }
         val intent = Intent(context, com.lagradost.cloudstream3.ui.player.DownloadedPlayerActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             setDataAndType(uri, "video/*")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
         context.startActivity(intent)
     } catch (e: Exception) {

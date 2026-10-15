@@ -1,6 +1,7 @@
 package com.movievortex.android.ui.detail
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -268,6 +269,78 @@ fun DetailScreen(
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Primary Action Buttons Row (Watch Now & Download Movie)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
+                                    state.currentSeasonEpisodes.firstOrNull()?.let { ep ->
+                                        onPlayEpisode(media, ep)
+                                    } ?: onPlayMovie(media)
+                                } else {
+                                    onPlayMovie(media)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB800)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = VortexIcons.Play,
+                                contentDescription = "Watch Now",
+                                tint = Color.Black,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Watch Now",
+                                color = Color.Black,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
+                                    state.currentSeasonEpisodes.firstOrNull()?.let { ep ->
+                                        onDownloadClick(media, ep)
+                                    } ?: onDownloadClick(media, null)
+                                } else {
+                                    onDownloadClick(media, null)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1E24)),
+                            border = BorderStroke(1.2.dp, Color(0xFFFFB800)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = VortexIcons.Download,
+                                contentDescription = "Download Movie",
+                                tint = Color(0xFFFFB800),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Download",
+                                color = Color(0xFFFFB800),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // 3. Storyline Section
@@ -410,6 +483,7 @@ fun DetailScreen(
                     EpisodeListItem(
                         episode = episode,
                         onClick = { onPlayEpisode(media, episode) },
+                        onDownloadClick = { onDownloadClick(media, episode) },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                     )
                 }
@@ -454,12 +528,47 @@ fun DetailScreen(
             }
         }
 
-        // Floating "Watch" Pill Button at Bottom-Right (Screenshot_20261014_180737.jpg)
-        Box(
+        // Floating Action Bar at Bottom-Right: Download & Watch
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 24.dp)
+                .padding(end = 16.dp, bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Download Pill Button
+            Button(
+                onClick = {
+                    if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
+                        state.currentSeasonEpisodes.firstOrNull()?.let { ep ->
+                            onDownloadClick(media, ep)
+                        } ?: onDownloadClick(media, null)
+                    } else {
+                        onDownloadClick(media, null)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xF01A1A20)),
+                border = BorderStroke(1.2.dp, Color(0xFFFFB800)),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                modifier = Modifier.shadow(8.dp, RoundedCornerShape(24.dp))
+            ) {
+                Icon(
+                    imageVector = VortexIcons.Download,
+                    contentDescription = "Download",
+                    tint = Color(0xFFFFB800),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Download",
+                    color = Color(0xFFFFB800),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Watch Pill Button
             Button(
                 onClick = {
                     if (media.type == MediaType.TvSeries || media.type == MediaType.Anime) {
@@ -470,9 +579,9 @@ fun DetailScreen(
                         onPlayMovie(media)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB800)),
                 shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 22.dp, vertical = 12.dp),
                 modifier = Modifier.shadow(8.dp, RoundedCornerShape(24.dp))
             ) {
                 Icon(
@@ -497,6 +606,7 @@ fun DetailScreen(
 private fun EpisodeListItem(
     episode: MediaEpisode,
     onClick: () -> Unit,
+    onDownloadClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -556,6 +666,22 @@ private fun EpisodeListItem(
                     fontSize = 11.sp
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        IconButton(
+            onClick = onDownloadClick,
+            modifier = Modifier
+                .size(36.dp)
+                .background(Color(0xFF222228), CircleShape)
+        ) {
+            Icon(
+                imageVector = VortexIcons.Download,
+                contentDescription = "Download Episode",
+                tint = Color(0xFFFFB800),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

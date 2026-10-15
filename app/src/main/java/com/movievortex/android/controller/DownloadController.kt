@@ -10,10 +10,12 @@ import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
 import com.movievortex.android.model.MediaEpisode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class DownloadUiItem(
     val id: String,
@@ -44,29 +46,68 @@ class DownloadController : ViewModel() {
     }
 
     fun loadDownloads() {
-        viewModelScope.launch {
-            val queue = DownloadQueueManager.queue.value
+        viewModelScope.launch(Dispatchers.IO) {
             val downloadItems = mutableListOf<DownloadUiItem>()
 
-            queue.forEach { queueWrapper ->
-                val item = queueWrapper.downloadItem
-                val resumeEp = queueWrapper.resumePackage?.item?.ep
-                val id = queueWrapper.id
-                val title = item?.resultName ?: resumeEp?.mainName ?: resumeEp?.name ?: "Media Download"
-                val poster = item?.resultPoster ?: resumeEp?.poster
+            // 1. Scan offline directory for completed files
+            try {
+                val dir = File("/storage/emulated/0/Download/MovieVortex")
+                if (dir.exists() && dir.isDirectory) {
+                    dir.listFiles()?.filter { file ->
+                        file.isFile && (file.extension.equals("mp4", true) ||
+                                file.extension.equals("mkv", true) ||
+                                file.extension.equals("webm", true) ||
+                                file.extension.equals("avi", true))
+                    }?.forEach { file ->
+                        val displayTitle = file.nameWithoutExtension.replace("_", " ")
+                        downloadItems.add(
+                            DownloadUiItem(
+                                id = file.absolutePath.hashCode().toString(),
+                                title = displayTitle,
+                                poster = null,
+                                quality = "1080p",
+                                fileSizeBytes = file.length(),
+                                downloadedBytes = file.length(),
+                                progress = 1.0f,
+                                state = MediaDownloadState.Completed,
+                                localFilePath = file.absolutePath
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DownloadController", "Error scanning local downloads", e)
+            }
 
-                downloadItems.add(
-                    DownloadUiItem(
-                        id = id.toString(),
-                        title = title,
-                        poster = poster,
-                        quality = "1080p",
-                        fileSizeBytes = 0L,
-                        downloadedBytes = 0L,
-                        progress = 0f,
-                        state = MediaDownloadState.Downloading
-                    )
-                )
+            // 2. Active downloads from CloudStream queue
+            try {
+                val queue = DownloadQueueManager.queue.value
+                queue.forEach { queueWrapper ->
+                    val item = queueWrapper.downloadItem
+                    val resumeEp = queueWrapper.resumePackage?.item?.ep
+                    val id = queueWrapper.id
+                    val title = item?.resultName ?: resumeEp?.mainName ?: resumeEp?.name ?: "Media Download"
+                    val poster = item?.resultPoster ?: resumeEp?.poster
+                    val cleanName = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+
+                    if (downloadItems.none { it.title == title }) {
+                        downloadItems.add(
+                            DownloadUiItem(
+                                id = id.toString(),
+                                title = title,
+                                poster = poster,
+                                quality = "1080p",
+                                fileSizeBytes = 0L,
+                                downloadedBytes = 0L,
+                                progress = 0.35f,
+                                state = MediaDownloadState.Downloading,
+                                localFilePath = "/storage/emulated/0/Download/MovieVortex/$cleanName.mp4"
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DownloadController", "Error loading queue", e)
             }
 
             _uiState.value = DownloadsUiState(
@@ -77,7 +118,6 @@ class DownloadController : ViewModel() {
     }
 
     fun pauseDownload(id: String) {
-        // Pauses underlying task
         _uiState.value = _uiState.value.copy(
             items = _uiState.value.items.map {
                 if (it.id == id) it.copy(state = MediaDownloadState.Paused) else it
@@ -94,6 +134,13 @@ class DownloadController : ViewModel() {
     }
 
     fun deleteDownload(id: String) {
+        val itemToDelete = _uiState.value.items.find { it.id == id }
+        if (itemToDelete?.localFilePath != null) {
+            try {
+                val f = File(itemToDelete.localFilePath)
+                if (f.exists()) f.delete()
+            } catch (_: Exception) {}
+        }
         _uiState.value = _uiState.value.copy(
             items = _uiState.value.items.filter { it.id != id }
         )
@@ -112,6 +159,7 @@ class DownloadController : ViewModel() {
         }
         val cleanName = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
         val newId = System.currentTimeMillis().toString()
+        val localPath = "/storage/emulated/0/Download/MovieVortex/$cleanName.mp4"
 
         val newItem = DownloadUiItem(
             id = newId,
@@ -123,31 +171,81 @@ class DownloadController : ViewModel() {
             downloadedBytes = 0L,
             progress = 0.05f,
             state = MediaDownloadState.Downloading,
-            localFilePath = "/storage/emulated/0/Download/MovieVortex/$cleanName.mp4"
+            localFilePath = localPath
         )
 
         _uiState.value = _uiState.value.copy(
-            items = listOf(newItem) + _uiState.value.items,
+            items = listOf(newItem) + _uiState.value.items.filter { it.title != title },
             activeDownloadsCount = _uiState.value.activeDownloadsCount + 1
         )
 
-        val targetUrl = streamUrl ?: media.rawUrl
-        if (targetUrl.isNotBlank() && (targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+        Toast.makeText(context, "Starting download: $title", Toast.LENGTH_SHORT).show()
+
+        // 1. Queue into CloudStream's native DownloadQueueManager
+        try {
+            val resultEp = com.lagradost.cloudstream3.ui.result.ResultEpisode(
+                name = episode?.title ?: media.title,
+                season = episode?.seasonNumber,
+                episode = episode?.episodeNumber,
+                data = episode?.dataUrl ?: media.rawUrl,
+                posterUrl = episode?.poster ?: media.poster,
+                id = (episode?.dataUrl ?: media.rawUrl).hashCode()
+            )
+            val queueItem = com.lagradost.cloudstream3.utils.downloader.DownloadObjects.DownloadQueueItem(
+                episode = resultEp,
+                isMovie = media.type == com.movievortex.android.model.MediaType.Movie,
+                name = media.title,
+                type = if (media.type == com.movievortex.android.model.MediaType.Movie)
+                    com.lagradost.cloudstream3.TvType.Movie else com.lagradost.cloudstream3.TvType.TvSeries,
+                posterUrl = media.poster,
+                apiName = media.providerApiName,
+                id = (media.rawUrl + (episode?.dataUrl ?: "")).hashCode(),
+                url = media.rawUrl
+            )
+            DownloadQueueManager.addToQueue(queueItem.toWrapper())
+        } catch (e: Exception) {
+            android.util.Log.e("DownloadController", "Error adding to CloudStream queue", e)
+        }
+
+        // 2. Background resolution and direct download manager
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? android.app.DownloadManager
-                if (dm != null) {
-                    val request = android.app.DownloadManager.Request(Uri.parse(targetUrl))
-                        .setTitle(title)
-                        .setDescription("Downloading $title from MovieVortex")
-                        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MovieVortex/$cleanName.mp4")
-                        .setAllowedOverMetered(true)
-                        .setAllowedOverRoaming(true)
-                    dm.enqueue(request)
-                    Toast.makeText(context, "Download started: $title", Toast.LENGTH_SHORT).show()
+                var directVideoUrl: String? = streamUrl
+                if (directVideoUrl == null) {
+                    val api = com.lagradost.cloudstream3.APIHolder.getApiFromNameNull(media.providerApiName)
+                        ?: com.lagradost.cloudstream3.APIHolder.apis.firstOrNull { media.rawUrl.startsWith(it.mainUrl) }
+                        ?: com.lagradost.cloudstream3.APIHolder.apis.firstOrNull()
+
+                    if (api != null) {
+                        val targetData = episode?.dataUrl ?: media.rawUrl
+                        com.lagradost.cloudstream3.ui.APIRepository(api).loadLinks(
+                            data = targetData,
+                            isCasting = false,
+                            subtitleCallback = {},
+                            callback = { link ->
+                                if (directVideoUrl == null && link.url.isNotBlank()) {
+                                    directVideoUrl = link.url
+                                }
+                            }
+                        )
+                    }
+                }
+
+                if (directVideoUrl != null && (directVideoUrl!!.startsWith("http://") || directVideoUrl!!.startsWith("https://"))) {
+                    val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? android.app.DownloadManager
+                    if (dm != null) {
+                        val request = android.app.DownloadManager.Request(Uri.parse(directVideoUrl))
+                            .setTitle(title)
+                            .setDescription("MovieVortex Offline Download")
+                            .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MovieVortex/$cleanName.mp4")
+                            .setAllowedOverMetered(true)
+                            .setAllowedOverRoaming(true)
+                        dm.enqueue(request)
+                    }
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Download queued: ${e.message}", Toast.LENGTH_SHORT).show()
+                android.util.Log.e("DownloadController", "Background link resolve/download failed", e)
             }
         }
     }
