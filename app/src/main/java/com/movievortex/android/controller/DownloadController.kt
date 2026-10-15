@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager
 import com.movievortex.android.model.MediaDownloadState
 import com.movievortex.android.model.MediaType
-import com.movievortex.android.model.MovieVortexMedia
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
+import com.movievortex.android.model.MediaEpisode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,5 +97,58 @@ class DownloadController : ViewModel() {
         _uiState.value = _uiState.value.copy(
             items = _uiState.value.items.filter { it.id != id }
         )
+    }
+
+    fun downloadMedia(
+        context: Context,
+        media: com.movievortex.android.model.MovieVortexMedia,
+        episode: MediaEpisode? = null,
+        streamUrl: String? = null
+    ) {
+        val title = if (episode != null) {
+            "${media.title} S${episode.seasonNumber}E${episode.episodeNumber}"
+        } else {
+            media.title
+        }
+        val cleanName = title.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+        val newId = System.currentTimeMillis().toString()
+
+        val newItem = DownloadUiItem(
+            id = newId,
+            title = title,
+            mediaType = media.type,
+            poster = episode?.poster ?: media.poster,
+            quality = "1080p",
+            fileSizeBytes = 0L,
+            downloadedBytes = 0L,
+            progress = 0.05f,
+            state = MediaDownloadState.Downloading,
+            localFilePath = "/storage/emulated/0/Download/MovieVortex/$cleanName.mp4"
+        )
+
+        _uiState.value = _uiState.value.copy(
+            items = listOf(newItem) + _uiState.value.items,
+            activeDownloadsCount = _uiState.value.activeDownloadsCount + 1
+        )
+
+        val targetUrl = streamUrl ?: media.rawUrl
+        if (targetUrl.isNotBlank() && (targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+            try {
+                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? android.app.DownloadManager
+                if (dm != null) {
+                    val request = android.app.DownloadManager.Request(Uri.parse(targetUrl))
+                        .setTitle(title)
+                        .setDescription("Downloading $title from MovieVortex")
+                        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MovieVortex/$cleanName.mp4")
+                        .setAllowedOverMetered(true)
+                        .setAllowedOverRoaming(true)
+                    dm.enqueue(request)
+                    Toast.makeText(context, "Download started: $title", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Download queued: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

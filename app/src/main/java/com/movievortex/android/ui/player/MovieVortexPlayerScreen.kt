@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
+import android.os.Environment
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -13,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +34,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
@@ -53,7 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
@@ -70,29 +71,53 @@ import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import com.movievortex.android.controller.PlayerController
 import com.movievortex.android.controller.PlayerStatus
+import com.movievortex.android.model.MediaEpisode
 import com.movievortex.android.model.MovieVortexMedia
 import com.movievortex.android.model.StreamSource
 import com.movievortex.android.ui.components.VortexIcons
 import com.movievortex.android.ui.theme.VortexColors
 import kotlinx.coroutines.delay
 
+private fun mapServerDisplayName(rawName: String): String {
+    val lower = rawName.lowercase()
+    return when {
+        lower.contains("anivortex") || lower.contains("turbo") -> "Anivortex Turbo"
+        lower.contains("streamflare") || lower.contains("istreamflare") || lower.contains("core") -> "StreamFlare Core"
+        lower.contains("moviebox") || lower.contains("rive") -> "Rive Server"
+        lower.contains("spiral") -> "Spiral"
+        else -> rawName
+    }
+}
+
 @Composable
 fun MovieVortexPlayerScreen(
     playerController: PlayerController,
     media: MovieVortexMedia? = null,
+    currentEpisode: MediaEpisode? = null,
+    episodes: List<MediaEpisode> = emptyList(),
+    onEpisodeClick: ((MediaEpisode) -> Unit)? = null,
     recommendations: List<MovieVortexMedia> = emptyList(),
     onMediaClick: ((MovieVortexMedia) -> Unit)? = null,
     onCloseClick: () -> Unit,
     onPlayOnTvClick: (() -> Unit)? = null,
+    onDownloadClick: ((MovieVortexMedia, MediaEpisode?, String?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val state by playerController.uiState.collectAsState()
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(true) }
     var isFullscreen by remember { mutableStateOf(false) }
+    var isSpeedingUp by remember { mutableStateOf(false) }
     var showQualityPicker by remember { mutableStateOf(false) }
     var showSubtitlePicker by remember { mutableStateOf(false) }
-    var selectedServerName by remember { mutableStateOf("Turbo") }
+    var selectedServerName by remember { mutableStateOf("Anivortex Turbo") }
+
+    val allSeasons = remember(episodes) {
+        if (episodes.isNotEmpty()) episodes.map { it.seasonNumber }.distinct().sorted() else listOf(1)
+    }
+    var selectedSeasonNum by remember(currentEpisode, allSeasons) {
+        mutableIntStateOf(currentEpisode?.seasonNumber ?: allSeasons.firstOrNull() ?: 1)
+    }
 
     val activity = context as? Activity
 
@@ -124,7 +149,7 @@ fun MovieVortexPlayerScreen(
     LaunchedEffect(state.currentSource) {
         state.currentSource?.let { source ->
             try {
-                selectedServerName = source.extractorName.ifBlank { "Turbo" }
+                selectedServerName = mapServerDisplayName(source.extractorName.ifBlank { "Anivortex Turbo" })
                 val mediaItem = MediaItem.fromUri(source.url)
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -168,7 +193,91 @@ fun MovieVortexPlayerScreen(
         }
     }
 
-    // If Fullscreen mode is engaged
+    val onNextEpisodeAction: () -> Unit = {
+        if (episodes.isNotEmpty()) {
+            val currentIdx = if (currentEpisode != null) {
+                episodes.indexOfFirst { it.id == currentEpisode.id }
+            } else {
+                0
+            }
+            if (currentIdx in 0 until episodes.size - 1) {
+                val nextEp = episodes[currentIdx + 1]
+                onEpisodeClick?.invoke(nextEp)
+            } else {
+                Toast.makeText(context, "No next episode", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            // Movie: play next recommendation if available, else seek 10s
+            if (recommendations.isNotEmpty()) {
+                onMediaClick?.invoke(recommendations.first())
+            } else {
+                val dur = exoPlayer.duration.coerceAtLeast(0L)
+                val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
+                exoPlayer.seekTo(newPos)
+                playerController.updateProgress(newPos, dur)
+            }
+        }
+    }
+
+    val onPrevEpisodeAction: () -> Unit = {
+        if (exoPlayer.currentPosition > 5000L) {
+            exoPlayer.seekTo(0L)
+            playerController.updateProgress(0L, exoPlayer.duration.coerceAtLeast(0L))
+        } else if (episodes.isNotEmpty()) {
+            val currentIdx = if (currentEpisode != null) {
+                episodes.indexOfFirst { it.id == currentEpisode.id }
+            } else {
+                0
+            }
+            if (currentIdx > 0) {
+                onEpisodeClick?.invoke(episodes[currentIdx - 1])
+            } else {
+                exoPlayer.seekTo(0L)
+            }
+        } else {
+            val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+            exoPlayer.seekTo(newPos)
+            playerController.updateProgress(newPos, exoPlayer.duration.coerceAtLeast(0L))
+        }
+    }
+
+    val onSkipIntroAction: () -> Unit = {
+        val dur = exoPlayer.duration.coerceAtLeast(0L)
+        val newPos = (exoPlayer.currentPosition + 85000L).coerceAtMost(dur)
+        exoPlayer.seekTo(newPos)
+        playerController.updateProgress(newPos, dur)
+        Toast.makeText(context, "Skipped +85s", Toast.LENGTH_SHORT).show()
+    }
+
+    val handleDownloadAction: () -> Unit = {
+        val streamUrl = state.currentSource?.url
+        val displayTitle = state.mediaTitle.ifBlank { media?.title ?: "MovieVortex Media" }
+        val cleanName = displayTitle.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+        if (!streamUrl.isNullOrBlank()) {
+            try {
+                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? android.app.DownloadManager
+                if (dm != null) {
+                    val request = android.app.DownloadManager.Request(Uri.parse(streamUrl))
+                        .setTitle(displayTitle)
+                        .setDescription("Downloading $displayTitle from MovieVortex")
+                        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MovieVortex/$cleanName.mp4")
+                        .setAllowedOverMetered(true)
+                        .setAllowedOverRoaming(true)
+                    dm.enqueue(request)
+                    Toast.makeText(context, "Download started: $displayTitle", Toast.LENGTH_SHORT).show()
+                } else {
+                    onDownloadClick?.invoke(media ?: MovieVortexMedia(id = cleanName, title = displayTitle), currentEpisode, streamUrl)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Download queued: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Connecting to stream before downloading...", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Fullscreen Mode
     if (isFullscreen) {
         Box(
             modifier = Modifier
@@ -188,11 +297,68 @@ fun MovieVortexPlayerScreen(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { playerController.toggleControlsVisibility() }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { playerController.toggleControlsVisibility() },
+                            onDoubleTap = { offset ->
+                                val w = size.width
+                                val dur = exoPlayer.duration.coerceAtLeast(0L)
+                                if (offset.x < w / 2) {
+                                    val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                                    exoPlayer.seekTo(newPos)
+                                    playerController.updateProgress(newPos, dur)
+                                } else {
+                                    val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
+                                    exoPlayer.seekTo(newPos)
+                                    playerController.updateProgress(newPos, dur)
+                                }
+                            },
+                            onPress = {
+                                tryAwaitRelease()
+                                if (isSpeedingUp) {
+                                    exoPlayer.setPlaybackSpeed(1.0f)
+                                    isSpeedingUp = false
+                                }
+                            },
+                            onLongPress = {
+                                exoPlayer.setPlaybackSpeed(2.0f)
+                                isSpeedingUp = true
+                            }
+                        )
+                    }
             )
 
+            // 2X Speed Indicator Badge
+            if (isSpeedingUp) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 18.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xD9000000))
+                        .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "2X Speed",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "▶▶",
+                            color = Color(0xFFFFC107),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
+
             // Fullscreen Overlay Controls
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = state.isControlsVisible,
                 enter = fadeIn(),
                 exit = fadeOut()
@@ -218,17 +384,9 @@ fun MovieVortexPlayerScreen(
                         exoPlayer.seekTo(newPos)
                         playerController.updateProgress(newPos, dur)
                     },
-                    onRewind = {
-                        val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
-                        exoPlayer.seekTo(newPos)
-                        playerController.updateProgress(newPos, exoPlayer.duration.coerceAtLeast(0L))
-                    },
-                    onForward = {
-                        val dur = exoPlayer.duration.coerceAtLeast(0L)
-                        val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
-                        exoPlayer.seekTo(newPos)
-                        playerController.updateProgress(newPos, dur)
-                    },
+                    onRewind = onPrevEpisodeAction,
+                    onForward = onNextEpisodeAction,
+                    onSkipIntro = onSkipIntroAction,
                     onToggleFullscreen = {
                         isFullscreen = false
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -246,7 +404,7 @@ fun MovieVortexPlayerScreen(
         return
     }
 
-    // Normal Integrated View (Screenshot_20261014_180754.jpg)
+    // Normal Integrated View (Screenshot_20261015_084607.jpg)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -272,8 +430,65 @@ fun MovieVortexPlayerScreen(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { playerController.toggleControlsVisibility() }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { playerController.toggleControlsVisibility() },
+                            onDoubleTap = { offset ->
+                                val w = size.width
+                                val dur = exoPlayer.duration.coerceAtLeast(0L)
+                                if (offset.x < w / 2) {
+                                    val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                                    exoPlayer.seekTo(newPos)
+                                    playerController.updateProgress(newPos, dur)
+                                } else {
+                                    val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
+                                    exoPlayer.seekTo(newPos)
+                                    playerController.updateProgress(newPos, dur)
+                                }
+                            },
+                            onPress = {
+                                tryAwaitRelease()
+                                if (isSpeedingUp) {
+                                    exoPlayer.setPlaybackSpeed(1.0f)
+                                    isSpeedingUp = false
+                                }
+                            },
+                            onLongPress = {
+                                exoPlayer.setPlaybackSpeed(2.0f)
+                                isSpeedingUp = true
+                            }
+                        )
+                    }
             )
+
+            // 2X Speed Indicator Badge
+            if (isSpeedingUp) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 14.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xD9000000))
+                        .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "2X Speed",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "▶▶",
+                            color = Color(0xFFFFC107),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
 
             // Loading / Resolving state indicator
             if (state.status == PlayerStatus.ResolvingStreams) {
@@ -290,7 +505,7 @@ fun MovieVortexPlayerScreen(
             }
 
             // Embedded Overlay Controls
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = state.isControlsVisible,
                 enter = fadeIn(),
                 exit = fadeOut()
@@ -316,17 +531,9 @@ fun MovieVortexPlayerScreen(
                         exoPlayer.seekTo(newPos)
                         playerController.updateProgress(newPos, dur)
                     },
-                    onRewind = {
-                        val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
-                        exoPlayer.seekTo(newPos)
-                        playerController.updateProgress(newPos, exoPlayer.duration.coerceAtLeast(0L))
-                    },
-                    onForward = {
-                        val dur = exoPlayer.duration.coerceAtLeast(0L)
-                        val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(dur)
-                        exoPlayer.seekTo(newPos)
-                        playerController.updateProgress(newPos, dur)
-                    },
+                    onRewind = onPrevEpisodeAction,
+                    onForward = onNextEpisodeAction,
+                    onSkipIntro = onSkipIntroAction,
                     onToggleFullscreen = {
                         isFullscreen = true
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -342,17 +549,17 @@ fun MovieVortexPlayerScreen(
             }
         }
 
-        // 2. Scrollable Detail & Server Section Below Player
+        // 2. Scrollable Detail, Server & Episode Section Below Player
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 36.dp)
         ) {
             // Title, Rating, Year
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    val displayTitle = state.mediaTitle.ifBlank { media?.title ?: "Dune: Part Two" }
+                    val displayTitle = state.mediaTitle.ifBlank { media?.title ?: "MovieVortex Media" }
                     Text(
                         text = displayTitle,
                         color = Color.White,
@@ -363,7 +570,7 @@ fun MovieVortexPlayerScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val ratingValue = media?.rating ?: 8.4f
+                        val ratingValue = media?.rating ?: 8.6f
                         Text(
                             text = "★ %.1f".format(ratingValue),
                             color = Color(0xFFFFC107),
@@ -376,6 +583,15 @@ fun MovieVortexPlayerScreen(
                             color = Color(0xFFAAAAAA),
                             fontSize = 13.sp
                         )
+                        if (currentEpisode != null) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "S${currentEpisode.seasonNumber} E${currentEpisode.episodeNumber}",
+                                color = Color(0xFFAAAAAA),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -431,16 +647,14 @@ fun MovieVortexPlayerScreen(
                             ActionPillButton(
                                 icon = VortexIcons.Download,
                                 label = "Download",
-                                onClick = {
-                                    Toast.makeText(context, "Download queued", Toast.LENGTH_SHORT).show()
-                                }
+                                onClick = handleDownloadAction
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Server Selection Section (Screenshot_20261014_180754.jpg)
+                    // Server Selection Section (Screenshot_20261015_084607.jpg)
                     Text(
                         text = "If current server is not working, try a different one:",
                         color = Color(0xFFDDDDDD),
@@ -450,13 +664,8 @@ fun MovieVortexPlayerScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Servers Row: Turbo, Spiral, Rive, Core, AniVortex, IStreamFlare, MovieBox
-                    val dynamicServers = if (state.streamSources.isNotEmpty()) {
-                        state.streamSources.map { it.extractorName.ifBlank { it.quality } }.distinct()
-                    } else {
-                        listOf("Turbo", "Spiral", "Rive", "Core")
-                    }
-                    val allServers = (dynamicServers + listOf("AniVortex", "IStreamFlare", "MovieBox")).distinct()
+                    // Servers Row: Anivortex Turbo, StreamFlare Core, Rive Server, Spiral
+                    val serverOptions = listOf("Anivortex Turbo", "StreamFlare Core", "Rive Server", "Spiral")
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -472,7 +681,7 @@ fun MovieVortexPlayerScreen(
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(allServers) { serverName ->
+                            items(serverOptions) { serverName ->
                                 val isSelected = selectedServerName.equals(serverName, ignoreCase = true)
                                 Box(
                                     modifier = Modifier
@@ -485,8 +694,12 @@ fun MovieVortexPlayerScreen(
                                         )
                                         .clickable {
                                             selectedServerName = serverName
-                                            val matchedSource = state.streamSources.firstOrNull {
-                                                it.extractorName.equals(serverName, ignoreCase = true)
+                                            val matchedSource = state.streamSources.firstOrNull { source ->
+                                                val mapped = mapServerDisplayName(source.extractorName.ifBlank { source.quality })
+                                                mapped.equals(serverName, ignoreCase = true) ||
+                                                (serverName == "Anivortex Turbo" && (source.extractorName.contains("Turbo", true) || source.extractorName.contains("AniVortex", true))) ||
+                                                (serverName == "StreamFlare Core" && (source.extractorName.contains("Core", true) || source.extractorName.contains("StreamFlare", true))) ||
+                                                (serverName == "Rive Server" && (source.extractorName.contains("Rive", true) || source.extractorName.contains("MovieBox", true)))
                                             }
                                             if (matchedSource != null) {
                                                 playerController.selectSource(matchedSource)
@@ -508,7 +721,7 @@ fun MovieVortexPlayerScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(22.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Comments Section Card
                     Row(
@@ -522,7 +735,7 @@ fun MovieVortexPlayerScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "0",
+                            text = "1",
                             color = Color(0xFFAAAAAA),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
@@ -537,90 +750,260 @@ fun MovieVortexPlayerScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFF141414))
                             .border(1.dp, Color(0xFF222222), RoundedCornerShape(12.dp))
-                            .padding(16.dp)
+                            .padding(14.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "No comments yet",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Be the first to share your thoughts!",
-                                color = Color(0xFF888888),
-                                fontSize = 12.sp
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE50914)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("A", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Adhithya Sarjun",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "~1mo",
+                                        color = Color(0xFF888888),
+                                        fontSize = 11.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "servers are not working",
+                                    color = Color(0xFFCCCCCC),
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                    // You May Also Like Header
-                    Text(
-                        text = "You May Also Like",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    // If TV Series / Anime with episodes (Screenshot_20261015_084607.jpg)
+                    if (episodes.isNotEmpty()) {
+                        // Season Pills
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(allSeasons) { seasonNum ->
+                                val isSeasonSelected = selectedSeasonNum == seasonNum
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(if (isSeasonSelected) Color.White else Color(0xFF1E1E1E))
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSeasonSelected) Color.White else Color(0xFF333333),
+                                            shape = RoundedCornerShape(16.dp)
+                                        )
+                                        .clickable { selectedSeasonNum = seasonNum }
+                                        .padding(horizontal = 16.dp, vertical = 7.dp)
+                                ) {
+                                    Text(
+                                        text = "Season $seasonNum",
+                                        color = if (isSeasonSelected) Color.Black else Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Episodes Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Episodes",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(
+                                imageVector = VortexIcons.GridView,
+                                contentDescription = "Grid",
+                                tint = Color(0xFFAAAAAA),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        // Movie: You May Also Like Header
+                        Text(
+                            text = "You May Also Like",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
-            // Recommendations Grid (2 columns)
-            val fallbackRecommendations = listOf(
-                MovieVortexMedia(
-                    id = "dune-1",
-                    title = "Dune: Part One",
-                    poster = "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
-                    year = 2021,
-                    rating = 8.0f
-                ),
-                MovieVortexMedia(
-                    id = "eeaao",
-                    title = "Everything Everywhere All at Once",
-                    poster = "https://image.tmdb.org/t/p/w500/w3LxiVYPqEIIAqocRGSYQJzag4T.jpg",
-                    year = 2022,
-                    rating = 7.7f
-                ),
-                MovieVortexMedia(
-                    id = "dawn-apes",
-                    title = "Dawn of the Planet of the Apes",
-                    poster = "https://image.tmdb.org/t/p/w500/kScdOzMeqm79jA280vjDkL6aWf3.jpg",
-                    year = 2014,
-                    rating = 7.6f
-                ),
-                MovieVortexMedia(
-                    id = "wandering-earth",
-                    title = "The Wandering Earth II",
-                    poster = "https://image.tmdb.org/t/p/w500/4n743bJ3nC6c5XbXvT4d0eK3g1f.jpg",
-                    year = 2023,
-                    rating = 7.2f
-                )
-            )
+            // Episodes Grid (2 columns) or Movie Recommendations Grid (2 columns)
+            if (episodes.isNotEmpty()) {
+                val currentSeasonEps = episodes.filter { it.seasonNumber == selectedSeasonNum }
+                val chunkedEps = currentSeasonEps.chunked(2)
 
-            val displayList = if (recommendations.isNotEmpty()) recommendations else fallbackRecommendations
-            val chunked = displayList.chunked(2)
-
-            items(chunked) { rowItems ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rowItems.forEach { item ->
-                        RecommendationCard(
-                            media = item,
-                            badge = if (item.id.contains("dune")) "MULTI" else if (item.id.contains("eeaao")) "ORI" else "DUAL",
-                            onClick = { onMediaClick?.invoke(item) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (rowItems.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                items(chunkedEps) { epRow ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        epRow.forEach { ep ->
+                            val isPlayingThis = (currentEpisode?.id == ep.id) || (currentEpisode == null && ep.episodeNumber == 1 && selectedSeasonNum == 1)
+                            EpisodeGridCard(
+                                episode = ep,
+                                isPlaying = isPlayingThis,
+                                fallbackBackdrop = media?.backdrop ?: media?.poster,
+                                onClick = { onEpisodeClick?.invoke(ep) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (epRow.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
+            } else {
+                val fallbackRecommendations = listOf(
+                    MovieVortexMedia(
+                        id = "dune-1",
+                        title = "Dune: Part One",
+                        poster = "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
+                        year = 2021,
+                        rating = 8.0f
+                    ),
+                    MovieVortexMedia(
+                        id = "eeaao",
+                        title = "Everything Everywhere All at Once",
+                        poster = "https://image.tmdb.org/t/p/w500/w3LxiVYPqEIIAqocRGSYQJzag4T.jpg",
+                        year = 2022,
+                        rating = 7.7f
+                    ),
+                    MovieVortexMedia(
+                        id = "dawn-apes",
+                        title = "Dawn of the Planet of the Apes",
+                        poster = "https://image.tmdb.org/t/p/w500/kScdOzMeqm79jA280vjDkL6aWf3.jpg",
+                        year = 2014,
+                        rating = 7.6f
+                    ),
+                    MovieVortexMedia(
+                        id = "wandering-earth",
+                        title = "The Wandering Earth II",
+                        poster = "https://image.tmdb.org/t/p/w500/4n743bJ3nC6c5XbXvT4d0eK3g1f.jpg",
+                        year = 2023,
+                        rating = 7.2f
+                    )
+                )
+
+                val displayList = if (recommendations.isNotEmpty()) recommendations else fallbackRecommendations
+                val chunked = displayList.chunked(2)
+
+                items(chunked) { rowItems ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            RecommendationCard(
+                                media = item,
+                                badge = if (item.id.contains("dune")) "MULTI" else if (item.id.contains("eeaao")) "ORI" else "DUAL",
+                                onClick = { onMediaClick?.invoke(item) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EpisodeGridCard(
+    episode: MediaEpisode,
+    isPlaying: Boolean,
+    fallbackBackdrop: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .aspectRatio(16f / 9.5f)
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = if (isPlaying) 1.5.dp else 1.dp,
+                color = if (isPlaying) Color.White else Color(0xFF222222),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable(onClick = onClick)
+    ) {
+        AsyncImage(
+            model = episode.poster ?: fallbackBackdrop,
+            contentDescription = episode.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Dark gradient vignette
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0x80000000),
+                            Color(0xE6000000)
+                        )
+                    )
+                )
+        )
+
+        // Episode info overlay at bottom
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "Episode : ${episode.episodeNumber}",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+            val desc = episode.synopsis?.ifBlank { episode.title } ?: episode.title
+            if (desc.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = desc,
+                    color = Color(0xFFCCCCCC),
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 13.sp
+                )
             }
         }
     }
@@ -683,7 +1066,6 @@ private fun RecommendationCard(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Badge (MULTI / ORI / DUAL)
             Box(
                 modifier = Modifier
                     .padding(6.dp)
@@ -743,6 +1125,7 @@ private fun PlayerControlsOverlay(
     onSeek: (Float) -> Unit,
     onRewind: () -> Unit,
     onForward: () -> Unit,
+    onSkipIntro: () -> Unit,
     onToggleFullscreen: () -> Unit,
     isFullscreen: Boolean,
     onBackClick: () -> Unit,
@@ -771,17 +1154,29 @@ private fun PlayerControlsOverlay(
                 )
             }
 
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 6.dp)
-            )
+            ) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
 
             IconButton(onClick = onSubtitleClick) {
                 Icon(
@@ -802,24 +1197,24 @@ private fun PlayerControlsOverlay(
             }
         }
 
-        // Center Controls (Prev/Rewind, Play/Pause, Next/Forward)
+        // Center Controls (Prev/Rewind, Play/Pause, Next Episode)
         Row(
             modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onRewind) {
                 Icon(
                     imageVector = VortexIcons.SkipPrevious,
-                    contentDescription = "Previous",
+                    contentDescription = "Previous Episode",
                     tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(52.dp)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable(onClick = onPlayPause),
@@ -829,16 +1224,44 @@ private fun PlayerControlsOverlay(
                     imageVector = if (isPlaying) VortexIcons.Pause else VortexIcons.Play,
                     contentDescription = if (isPlaying) "Pause" else "Play",
                     tint = Color.Black,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
             IconButton(onClick = onForward) {
                 Icon(
                     imageVector = VortexIcons.SkipNext,
-                    contentDescription = "Next",
+                    contentDescription = "Next Episode",
                     tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        // Tap-friendly Skip Intro Button (Lower-Right above seekbar)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 44.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xD9141414))
+                .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(18.dp))
+                .clickable(onClick = onSkipIntro)
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Skip Intro",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = VortexIcons.SkipNext,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }

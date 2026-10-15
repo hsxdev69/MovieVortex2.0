@@ -389,11 +389,11 @@
                         style="@style/VideoButton" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/player_skip_op"
+                        android:id="@+id/player_skip_op_dummy"
                         style="@style/VideoButton" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/player_skip_episode"
+                        android:id="@+id/player_skip_episode_dummy"
                         style="@style/VideoButton" />
                 </LinearLayout>
             </LinearLayout>
@@ -559,8 +559,66 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:strokeColor="@color/white"
+                app:strokeWidth="1dp" />
+
+            <!-- Tap-Friendly Touch Skip Intro / Next Episode Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/player_skip_op"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="12dp"
+                android:backgroundTint="#E6151515"
+                android:clickable="true"
+                android:elevation="6dp"
+                android:focusable="true"
+                android:minHeight="44dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="@string/video_skip_op"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_baseline_skip_next_24"
+                app:iconGravity="textEnd"
+                app:iconSize="20dp"
+                app:iconTint="@android:color/white"
+                app:layout_constraintBottom_toTopOf="@+id/bottom_player_bar"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:strokeColor="#80FFFFFF"
                 app:strokeWidth="1dp"
-                tools:text="Skip Opening" />
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/player_skip_episode"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="12dp"
+                android:backgroundTint="#E6151515"
+                android:clickable="true"
+                android:elevation="6dp"
+                android:focusable="true"
+                android:minHeight="44dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="@string/next_episode"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_baseline_skip_next_24"
+                app:iconGravity="textEnd"
+                app:iconSize="20dp"
+                app:iconTint="@android:color/white"
+                app:layout_constraintBottom_toTopOf="@+id/bottom_player_bar"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:strokeColor="#80FFFFFF"
+                app:strokeWidth="1dp"
+                tools:visibility="visible" />
 
             <!-- ================= BOTTOM BAR ================= -->
             <LinearLayout

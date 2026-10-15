@@ -2018,6 +2018,8 @@ class GeneratorPlayer : FullScreenPlayer() {
         }
     }
 
+    override fun hasNextEpisode(): Boolean = viewModel.hasNextEpisode() == true
+
     override fun nextEpisode() {
         if (viewModel.hasNextEpisode() == true) {
             isNextEpisode = true

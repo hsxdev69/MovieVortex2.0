@@ -127,7 +127,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     var swipeVerticalEnabled: Boolean = true
     var swipeHorizontalEnabled: Boolean = false
     var extraBrightnessEnabled: Boolean = false
-    var speedupEnabled: Boolean = false
+    var speedupEnabled: Boolean = true
 
     /** Hold / speed-up */
     val holdHandler = Handler(Looper.getMainLooper())
@@ -174,7 +174,7 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
     /** Double-tap / tap state */
 
     /** Whether double-tapping left/right seeks backward/forward. */
-    var doubleTapEnabled: Boolean = false
+    var doubleTapEnabled: Boolean = true
 
     /** Whether double-tapping the center of the screen pauses (left/right still seeks if [doubleTapEnabled]). */
     var doubleTapPauseEnabled: Boolean = false
@@ -219,8 +219,8 @@ class PlayerGestureHelper(private val playerView: PlayerView) {
             swipeVerticalEnabled = sm.getBoolean(context.getString(R.string.swipe_vertical_enabled_key), true)
             swipeHorizontalEnabled = sm.getBoolean(context.getString(R.string.swipe_enabled_key), true)
             extraBrightnessEnabled = sm.getBoolean(context.getString(R.string.extra_brightness_key), false)
-            speedupEnabled = sm.getBoolean(context.getString(R.string.speedup_key), false)
-            doubleTapEnabled = sm.getBoolean(context.getString(R.string.double_tap_enabled_key), false)
+            speedupEnabled = sm.getBoolean(context.getString(R.string.speedup_key), true)
+            doubleTapEnabled = sm.getBoolean(context.getString(R.string.double_tap_enabled_key), true)
             doubleTapPauseEnabled = sm.getBoolean(context.getString(R.string.double_tap_pause_enabled_key), false)
             fastForwardTime = sm.getInt(context.getString(R.string.double_tap_seek_time_key), 10).toLong() * 1000L
         } catch (_: Exception) {
