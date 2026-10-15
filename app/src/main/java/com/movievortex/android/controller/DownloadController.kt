@@ -183,24 +183,41 @@ class DownloadController : ViewModel() {
 
         // 1. Queue into CloudStream's native DownloadQueueManager
         try {
+            val epNumber = episode?.episodeNumber ?: 1
+            val seasonNumber = episode?.seasonNumber ?: 1
+            val dataUrl = episode?.dataUrl ?: media.rawUrl
+            val tvType = if (media.type == com.movievortex.android.model.MediaType.Movie)
+                com.lagradost.cloudstream3.TvType.Movie else com.lagradost.cloudstream3.TvType.TvSeries
+
             val resultEp = com.lagradost.cloudstream3.ui.result.ResultEpisode(
+                headerName = media.title,
                 name = episode?.title ?: media.title,
-                season = episode?.seasonNumber,
-                episode = episode?.episodeNumber,
-                data = episode?.dataUrl ?: media.rawUrl,
-                posterUrl = episode?.poster ?: media.poster,
-                id = (episode?.dataUrl ?: media.rawUrl).hashCode()
+                poster = episode?.poster ?: media.poster,
+                episode = epNumber,
+                seasonIndex = seasonNumber,
+                season = seasonNumber,
+                data = dataUrl,
+                apiName = media.providerApiName,
+                id = (media.rawUrl + dataUrl).hashCode(),
+                index = epNumber - 1,
+                position = 0L,
+                duration = 0L,
+                score = null,
+                description = media.synopsis,
+                isFiller = false,
+                tvType = tvType,
+                parentId = media.rawUrl.hashCode(),
+                videoWatchState = com.lagradost.cloudstream3.ui.result.VideoWatchState.None
             )
             val queueItem = com.lagradost.cloudstream3.utils.downloader.DownloadObjects.DownloadQueueItem(
                 episode = resultEp,
                 isMovie = media.type == com.movievortex.android.model.MediaType.Movie,
-                name = media.title,
-                type = if (media.type == com.movievortex.android.model.MediaType.Movie)
-                    com.lagradost.cloudstream3.TvType.Movie else com.lagradost.cloudstream3.TvType.TvSeries,
-                posterUrl = media.poster,
+                resultName = media.title,
+                resultType = tvType,
+                resultPoster = media.poster,
                 apiName = media.providerApiName,
-                id = (media.rawUrl + (episode?.dataUrl ?: "")).hashCode(),
-                url = media.rawUrl
+                resultId = media.rawUrl.hashCode(),
+                resultUrl = media.rawUrl
             )
             DownloadQueueManager.addToQueue(queueItem.toWrapper())
         } catch (e: Exception) {
