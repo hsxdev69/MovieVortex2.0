@@ -48,7 +48,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,6 +108,7 @@ fun MovieVortexPlayerScreen(
 ) {
     val state by playerController.uiState.collectAsState()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var isPlaying by remember { mutableStateOf(true) }
     var isFullscreen by remember { mutableStateOf(false) }
     var isSpeedingUp by remember { mutableStateOf(false) }
@@ -241,14 +245,6 @@ fun MovieVortexPlayerScreen(
         }
     }
 
-    val onSkipIntroAction: () -> Unit = {
-        val dur = exoPlayer.duration.coerceAtLeast(0L)
-        val newPos = (exoPlayer.currentPosition + 85000L).coerceAtMost(dur)
-        exoPlayer.seekTo(newPos)
-        playerController.updateProgress(newPos, dur)
-        Toast.makeText(context, "Skipped +85s", Toast.LENGTH_SHORT).show()
-    }
-
     val handleDownloadAction: () -> Unit = {
         val streamUrl = state.currentSource?.url
         val displayTitle = state.mediaTitle.ifBlank { media?.title ?: "MovieVortex Media" }
@@ -314,15 +310,21 @@ fun MovieVortexPlayerScreen(
                                 }
                             },
                             onPress = {
-                                tryAwaitRelease()
-                                if (isSpeedingUp) {
-                                    exoPlayer.setPlaybackSpeed(1.0f)
-                                    isSpeedingUp = false
+                                var speedJob: Job? = null
+                                try {
+                                    speedJob = coroutineScope.launch {
+                                        delay(350)
+                                        isSpeedingUp = true
+                                        exoPlayer.setPlaybackSpeed(2.0f)
+                                    }
+                                    tryAwaitRelease()
+                                } finally {
+                                    speedJob?.cancel()
+                                    if (isSpeedingUp) {
+                                        exoPlayer.setPlaybackSpeed(1.0f)
+                                        isSpeedingUp = false
+                                    }
                                 }
-                            },
-                            onLongPress = {
-                                exoPlayer.setPlaybackSpeed(2.0f)
-                                isSpeedingUp = true
                             }
                         )
                     }
@@ -334,23 +336,25 @@ fun MovieVortexPlayerScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 18.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xD9000000))
-                        .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xE6000000))
+                        .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
-                            text = "2X Speed",
+                            text = "2X",
                             color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "▶▶",
                             color = Color(0xFFFFC107),
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -386,7 +390,6 @@ fun MovieVortexPlayerScreen(
                     },
                     onRewind = onPrevEpisodeAction,
                     onForward = onNextEpisodeAction,
-                    onSkipIntro = onSkipIntroAction,
                     onToggleFullscreen = {
                         isFullscreen = false
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -447,15 +450,21 @@ fun MovieVortexPlayerScreen(
                                 }
                             },
                             onPress = {
-                                tryAwaitRelease()
-                                if (isSpeedingUp) {
-                                    exoPlayer.setPlaybackSpeed(1.0f)
-                                    isSpeedingUp = false
+                                var speedJob: Job? = null
+                                try {
+                                    speedJob = coroutineScope.launch {
+                                        delay(350)
+                                        isSpeedingUp = true
+                                        exoPlayer.setPlaybackSpeed(2.0f)
+                                    }
+                                    tryAwaitRelease()
+                                } finally {
+                                    speedJob?.cancel()
+                                    if (isSpeedingUp) {
+                                        exoPlayer.setPlaybackSpeed(1.0f)
+                                        isSpeedingUp = false
+                                    }
                                 }
-                            },
-                            onLongPress = {
-                                exoPlayer.setPlaybackSpeed(2.0f)
-                                isSpeedingUp = true
                             }
                         )
                     }
@@ -467,23 +476,25 @@ fun MovieVortexPlayerScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 14.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xD9000000))
-                        .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xE6000000))
+                        .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
-                            text = "2X Speed",
+                            text = "2X",
                             color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "▶▶",
                             color = Color(0xFFFFC107),
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -533,7 +544,6 @@ fun MovieVortexPlayerScreen(
                     },
                     onRewind = onPrevEpisodeAction,
                     onForward = onNextEpisodeAction,
-                    onSkipIntro = onSkipIntroAction,
                     onToggleFullscreen = {
                         isFullscreen = true
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -1125,7 +1135,6 @@ private fun PlayerControlsOverlay(
     onSeek: (Float) -> Unit,
     onRewind: () -> Unit,
     onForward: () -> Unit,
-    onSkipIntro: () -> Unit,
     onToggleFullscreen: () -> Unit,
     isFullscreen: Boolean,
     onBackClick: () -> Unit,
@@ -1234,34 +1243,6 @@ private fun PlayerControlsOverlay(
                     contentDescription = "Next Episode",
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-
-        // Tap-friendly Skip Intro Button (Lower-Right above seekbar)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 12.dp, bottom = 44.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xD9141414))
-                .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(18.dp))
-                .clickable(onClick = onSkipIntro)
-                .padding(horizontal = 14.dp, vertical = 6.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Skip Intro",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = VortexIcons.SkipNext,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
                 )
             }
         }

@@ -2127,11 +2127,11 @@ class GeneratorPlayer : FullScreenPlayer() {
                     }
                 }
 
-                isOpVisible = (position < 120_000L || percentage < SKIP_OP_VIDEO_PERCENTAGE) && duration > 180_000L
+                isOpVisible = false
             }
         }
 
-        playerBinding?.playerSkipOp?.isVisible = isOpVisible
+        playerBinding?.playerSkipOp?.isVisible = false
 
         when {
             isLayout(PHONE) ->
