@@ -889,10 +889,28 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/player_speedup_button"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone" />
+        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="38dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="28dp"
+        android:backgroundTint="#CC101014"
+        android:clickable="false"
+        android:focusable="false"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:text="2X Speed  ▶▶"
+        android:textColor="@android:color/white"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:cornerRadius="19dp"
+        app:strokeColor="#40FFFFFF"
+        app:strokeWidth="1dp" />
 
     <!-- Episodes Overlay Drawer -->
     <LinearLayout

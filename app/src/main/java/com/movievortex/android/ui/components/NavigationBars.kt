@@ -58,7 +58,7 @@ fun MovieVortexTopBar(
     val bgModifier = if (isTransparent) {
         Modifier.background(VortexColors.TopBarGradient)
     } else {
-        Modifier.background(VortexColors.PureBlack)
+        Modifier.background(Color(0xFF0A0A0E))
     }
 
     Row(
@@ -66,41 +66,108 @@ fun MovieVortexTopBar(
             .fillMaxWidth()
             .then(bgModifier)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Stylized AV / MV Monogram Logo
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "AV",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Black,
-                fontStyle = FontStyle.Italic,
-                letterSpacing = (-1.5).sp
-            )
+        // Left: User Avatar + Greetings (Figma layout)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E1E24))
+                        .border(1.5.dp, Color(0x40FFFFFF), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = VortexIcons.Person,
+                        contentDescription = "User Avatar",
+                        tint = Color(0xFFFFB800),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                // Active status dot
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF00E676))
+                        .border(1.5.dp, Color.Black, CircleShape)
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = "📍 MovieVortex",
+                    color = Color(0xFFFFB800),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Hello, Explorer",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
-        // Center: "Watch Offline Anywhere" text (Screenshot_20261014_180728.jpg)
-        Text(
-            text = "Watch Offline Anywhere",
-            color = Color(0xFFDDDDDD),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        // Right: Search Icon
-        IconButton(
-            onClick = onSearchClick,
-            modifier = Modifier.size(36.dp)
+        // Right: Circular Glass Notification + Search
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = VortexIcons.Search,
-                contentDescription = "Search",
-                tint = Color.White,
-                modifier = Modifier.size(22.dp)
-            )
+            // Notification Bell
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x3325252A))
+                    .border(1.dp, Color(0x30FFFFFF), CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { /* Notifications */ }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = VortexIcons.Notifications,
+                    contentDescription = "Notifications",
+                    tint = Color.White,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
+            // Search Glass Button
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x3325252A))
+                    .border(1.dp, Color(0x30FFFFFF), CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onSearchClick
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = VortexIcons.Search,
+                    contentDescription = "Search",
+                    tint = Color.White,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
         }
     }
 }
@@ -112,53 +179,62 @@ fun MovieVortexBottomBar(
     modifier: Modifier = Modifier,
     activeDownloadCount: Int = 0
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFF000000))
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
+        // Floating Capsule Island
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0xF0121216))
+                .border(1.dp, Color(0x28FFFFFF), RoundedCornerShape(32.dp))
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            BottomNavItem(
-                title = "Movie/Tv",
-                icon = VortexIcons.Movie,
-                isSelected = currentDestination == MainDestination.MoviesTv,
-                onClick = { onDestinationSelected(MainDestination.MoviesTv) }
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BottomNavIslandItem(
+                    title = "Home",
+                    icon = VortexIcons.Movie,
+                    isSelected = currentDestination == MainDestination.MoviesTv,
+                    onClick = { onDestinationSelected(MainDestination.MoviesTv) }
+                )
 
-            BottomNavItemWithCharacter(
-                title = "Anime",
-                character = "ह",
-                isSelected = currentDestination == MainDestination.Anime,
-                onClick = { onDestinationSelected(MainDestination.Anime) }
-            )
+                BottomNavIslandItemWithCharacter(
+                    title = "Anime",
+                    character = "ह",
+                    isSelected = currentDestination == MainDestination.Anime,
+                    onClick = { onDestinationSelected(MainDestination.Anime) }
+                )
 
-            BottomNavItem(
-                title = "Downloads",
-                icon = VortexIcons.Download,
-                isSelected = currentDestination == MainDestination.Downloads,
-                badgeCount = activeDownloadCount,
-                onClick = { onDestinationSelected(MainDestination.Downloads) }
-            )
+                BottomNavIslandItem(
+                    title = "Downloads",
+                    icon = VortexIcons.Download,
+                    isSelected = currentDestination == MainDestination.Downloads,
+                    badgeCount = activeDownloadCount,
+                    onClick = { onDestinationSelected(MainDestination.Downloads) }
+                )
 
-            BottomNavItem(
-                title = "Settings",
-                icon = VortexIcons.Settings,
-                isSelected = currentDestination == MainDestination.Settings,
-                onClick = { onDestinationSelected(MainDestination.Settings) }
-            )
+                BottomNavIslandItem(
+                    title = "Settings",
+                    icon = VortexIcons.Settings,
+                    isSelected = currentDestination == MainDestination.Settings,
+                    onClick = { onDestinationSelected(MainDestination.Settings) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun BottomNavItem(
+private fun BottomNavIslandItem(
     title: String,
     icon: ImageVector,
     isSelected: Boolean,
@@ -166,118 +242,131 @@ private fun BottomNavItem(
     badgeCount: Int = 0
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val contentColor = if (isSelected) Color.White else Color(0xFF888888)
 
-    Column(
-        modifier = Modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
+    if (isSelected) {
+        // Active Pill in Figma: Pure white capsule with dark icon & text
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.White)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                )
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = title,
-                tint = contentColor,
-                modifier = Modifier.size(22.dp)
+                tint = Color.Black,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = title,
+                color = Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    } else {
+        // Inactive: Minimal icon with badge
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = Color(0xFF8E8E93),
+                modifier = Modifier.size(20.dp)
             )
 
             if (badgeCount > 0) {
                 Box(
                     modifier = Modifier
-                        .size(14.dp)
+                        .size(12.dp)
                         .clip(CircleShape)
-                        .background(Color.Red),
+                        .background(Color(0xFFE50914)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = if (badgeCount > 9) "9+" else badgeCount.toString(),
                         color = Color.White,
-                        fontSize = 8.sp,
+                        fontSize = 7.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = title,
-            color = contentColor,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-        )
-
-        Spacer(modifier = Modifier.height(3.dp))
-
-        // Selected active white underline bar (Screenshot_20261014_180728.jpg)
-        Box(
-            modifier = Modifier
-                .width(26.dp)
-                .height(2.5.dp)
-                .clip(RoundedCornerShape(1.dp))
-                .background(if (isSelected) Color.White else Color.Transparent)
-        )
     }
 }
 
 @Composable
-private fun BottomNavItemWithCharacter(
+private fun BottomNavIslandItemWithCharacter(
     title: String,
     character: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val contentColor = if (isSelected) Color.White else Color(0xFF888888)
 
-    Column(
-        modifier = Modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
+    if (isSelected) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.White)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                )
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = character,
+                color = Color.Black,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
             )
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = title,
+                color = Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    } else {
         Box(
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = character,
-                color = contentColor,
-                fontSize = 18.sp,
+                color = Color(0xFF8E8E93),
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = title,
-            color = contentColor,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-        )
-
-        Spacer(modifier = Modifier.height(3.dp))
-
-        // Selected active white underline bar
-        Box(
-            modifier = Modifier
-                .width(26.dp)
-                .height(2.5.dp)
-                .clip(RoundedCornerShape(1.dp))
-                .background(if (isSelected) Color.White else Color.Transparent)
-        )
     }
 }

@@ -1108,4 +1108,32 @@ object VortexIcons {
             }
         }.build()
     }
+
+    val Notifications: ImageVector by lazy {
+        ImageVector.Builder("Notifications", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12f, 22f)
+                curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+                horizontalLineToRelative(-4f)
+                curveToRelative(0f, 1.1f, 0.9f, 2f, 2f, 2f)
+                close()
+                moveTo(18f, 16f)
+                verticalLineToRelative(-5f)
+                curveToRelative(0f, -3.07f, -1.63f, -5.64f, -4.5f, -6.32f)
+                lineTo(13.5f, 4f)
+                curveToRelative(0f, -0.83f, -0.67f, -1.5f, -1.5f, -1.5f)
+                reflectiveCurveToRelative(-1.5f, 0.67f, -1.5f, 1.5f)
+                verticalLineToRelative(0.68f)
+                curveTo(7.64f, 5.36f, 6f, 7.92f, 6f, 11f)
+                verticalLineToRelative(5f)
+                lineToRelative(-2f, 2f)
+                verticalLineToRelative(1f)
+                horizontalLineToRelative(16f)
+                verticalLineToRelative(-1f)
+                lineToRelative(-2f, -2f)
+                close()
+            }
+        }.build()
+    }
 }
+

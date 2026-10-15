@@ -110,6 +110,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     protected var playerResizeEnabled = false
     protected var playerRotateEnabled = false
     protected var rotatedManually = false
+    private var orientationEventListener: android.view.OrientationEventListener? = null
     private var hideControlsNames = false
     protected var subtitleDelay
         set(value) = try {
@@ -242,6 +243,8 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     }
 
     override fun onDestroyView() {
+        orientationEventListener?.disable()
+        orientationEventListener = null
         playerHostView?.releaseOverlayLayoutListener()
         playerBinding = null
         super.onDestroyView()
@@ -395,12 +398,12 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
         val currentOrientation = activity.resources.configuration.orientation
         val orientation: Int = when (currentOrientation) {
             Configuration.ORIENTATION_LANDSCAPE ->
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
             Configuration.ORIENTATION_PORTRAIT ->
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
-            else -> playerHostView?.dynamicOrientation() ?: return
+            else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
         activity.requestedOrientation = orientation
     }
@@ -490,10 +493,50 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
             }
         }
         playerHostView?.requestUpdateBrightnessOverlayOnNextLayout()
+
+        try {
+            if (!isLayout(TV or EMULATOR)) {
+                if (orientationEventListener == null) {
+                    val ctx = context ?: activity
+                    if (ctx != null) {
+                        orientationEventListener = object : android.view.OrientationEventListener(ctx) {
+                            override fun onOrientationChanged(orientation: Int) {
+                                if (orientation == ORIENTATION_UNKNOWN) return
+                                val act = activity ?: return
+                                if (isLocked) return
+
+                                val isPhysicalLandscape = (orientation in 65..115) || (orientation in 245..295)
+                                val isPhysicalPortrait = (orientation in 0..25) || (orientation in 335..359)
+                                val currentConfig = act.resources.configuration.orientation
+
+                                if (isPhysicalLandscape && currentConfig != Configuration.ORIENTATION_LANDSCAPE) {
+                                    val target = if (orientation in 65..115) {
+                                        ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+                                    } else {
+                                        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                    }
+                                    act.requestedOrientation = target
+                                    rotatedManually = false
+                                } else if (isPhysicalPortrait && currentConfig != Configuration.ORIENTATION_PORTRAIT && !rotatedManually) {
+                                    act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                }
+                            }
+                        }
+                    }
+                }
+                if (orientationEventListener?.canDetectOrientation() == true) {
+                    orientationEventListener?.enable()
+                }
+            }
+        } catch (e: Exception) {
+            logError(e)
+        }
+
         super.onResume()
     }
 
     override fun onStop() {
+        orientationEventListener?.disable()
         activity?.detachBackPressedCallback("FullScreenPlayer")
         super.onStop()
     }
@@ -1222,10 +1265,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
 
-        if (!isLayout(TV or EMULATOR)) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-            rotatedManually = false
-        }
+        // Do not force SCREEN_ORIENTATION_SENSOR here as it resets manual rotation.
 
         // If we rotate the device we need to recalculate the zoom
         val gh = playerHostView?.gestureHelper ?: return
@@ -1510,7 +1550,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                 )
                 playerRotateEnabled = settingsManager.getBoolean(
                     ctx.getString(R.string.rotate_video_key),
-                    false
+                    true
                 )
                 playerResizeEnabled =
                     settingsManager.getBoolean(
@@ -1539,8 +1579,7 @@ open class FullScreenPlayer : AbstractPlayerFragment<FragmentPlayerBinding>(
                     restoreCompressorSettings()
                 }
                 playerResizeBtt.isVisible = playerResizeEnabled
-                playerRotateBtt.isVisible =
-                    if (isLayout(TV or EMULATOR)) false else playerRotateEnabled
+                playerRotateBtt.isVisible = !isLayout(TV or EMULATOR)
                 if (hideControlsNames) {
                     hideControlsNames()
                 }
