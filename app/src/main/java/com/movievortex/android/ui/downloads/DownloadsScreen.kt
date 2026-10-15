@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,14 @@ import com.movievortex.android.controller.DownloadController
 import com.movievortex.android.controller.DownloadUiItem
 import com.movievortex.android.model.MediaDownloadState
 import com.movievortex.android.ui.theme.VortexColors
+import java.util.Locale
+
+fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0L) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+    return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+}
 
 @Composable
 fun DownloadsScreen(
@@ -52,6 +61,7 @@ fun DownloadsScreen(
     modifier: Modifier = Modifier
 ) {
     val state by downloadController.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         downloadController.loadDownloads()
@@ -124,6 +134,7 @@ fun DownloadsScreen(
                         item = item,
                         onPause = { downloadController.pauseDownload(item.id) },
                         onResume = { downloadController.resumeDownload(item.id) },
+                        onRetry = { downloadController.retryDownload(context, item) },
                         onDelete = { downloadController.deleteDownload(item.id) },
                         onPlay = { onPlayOffline(item) }
                     )
@@ -138,6 +149,7 @@ fun DownloadItemCard(
     item: DownloadUiItem,
     onPause: () -> Unit,
     onResume: () -> Unit,
+    onRetry: () -> Unit,
     onDelete: () -> Unit,
     onPlay: () -> Unit
 ) {
@@ -181,25 +193,85 @@ fun DownloadItemCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // State & Quality
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.state == MediaDownloadState.Completed) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0x3310B981), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
+            // State & Size
+            when (item.state) {
+                MediaDownloadState.Completed -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0x3310B981), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "OFFLINE",
+                                color = VortexColors.EmeraldGreen,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "OFFLINE",
-                            color = VortexColors.EmeraldGreen,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "${item.quality} • ${formatFileSize(item.fileSizeBytes)}",
+                            color = VortexColors.SecondaryText,
+                            fontSize = 11.sp
                         )
                     }
-                } else {
+                }
+                MediaDownloadState.Downloading -> {
+                    val sizeInfo = if (item.fileSizeBytes > 0L) {
+                        "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.fileSizeBytes)}"
+                    } else {
+                        "${formatFileSize(item.downloadedBytes)} transferred"
+                    }
                     Text(
-                        text = "${item.quality} • ${(item.progress * 100).toInt()}%",
+                        text = "DOWNLOADING • ${(item.progress * 100).toInt()}% ($sizeInfo)",
+                        color = Color(0xFFFFB800),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                MediaDownloadState.Paused -> {
+                    val sizeInfo = if (item.fileSizeBytes > 0L) {
+                        "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.fileSizeBytes)}"
+                    } else {
+                        "${formatFileSize(item.downloadedBytes)} transferred"
+                    }
+                    Text(
+                        text = "PAUSED • ${(item.progress * 100).toInt()}% ($sizeInfo)",
                         color = VortexColors.SecondaryText,
+                        fontSize = 11.sp
+                    )
+                }
+                MediaDownloadState.Failed -> {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0x33EF4444), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "FAILED",
+                                color = Color(0xFFEF4444),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (!item.errorMessage.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = item.errorMessage,
+                                color = Color(0xFFEF4444),
+                                fontSize = 10.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    Text(
+                        text = "QUEUED",
+                        color = VortexColors.MutedText,
                         fontSize = 11.sp
                     )
                 }
@@ -208,7 +280,7 @@ fun DownloadItemCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             // Progress Bar if in progress
-            if (item.state != MediaDownloadState.Completed) {
+            if (item.state == MediaDownloadState.Downloading || item.state == MediaDownloadState.Paused) {
                 LinearProgressIndicator(
                     progress = { item.progress },
                     color = VortexColors.CinematicRed,
@@ -223,43 +295,55 @@ fun DownloadItemCard(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Action Button
-        when (item.state) {
-            MediaDownloadState.Completed -> {
-                IconButton(onClick = onPlay) {
-                    Icon(
-                        imageVector = VortexIcons.Play,
-                        contentDescription = "Play offline",
-                        tint = VortexColors.EmeraldGreen
-                    )
+        // Action Buttons
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            when (item.state) {
+                MediaDownloadState.Completed -> {
+                    IconButton(onClick = onPlay) {
+                        Icon(
+                            imageVector = VortexIcons.Play,
+                            contentDescription = "Play offline",
+                            tint = VortexColors.EmeraldGreen
+                        )
+                    }
                 }
+                MediaDownloadState.Downloading -> {
+                    IconButton(onClick = onPause) {
+                        Icon(
+                            imageVector = VortexIcons.Pause,
+                            contentDescription = "Pause",
+                            tint = VortexColors.SecondaryText
+                        )
+                    }
+                }
+                MediaDownloadState.Paused -> {
+                    IconButton(onClick = onResume) {
+                        Icon(
+                            imageVector = VortexIcons.Play,
+                            contentDescription = "Resume",
+                            tint = VortexColors.PrimaryText
+                        )
+                    }
+                }
+                MediaDownloadState.Failed -> {
+                    IconButton(onClick = onRetry) {
+                        Icon(
+                            imageVector = VortexIcons.Refresh,
+                            contentDescription = "Retry",
+                            tint = Color(0xFFFFB800)
+                        )
+                    }
+                }
+                else -> {}
             }
-            MediaDownloadState.Downloading -> {
-                IconButton(onClick = onPause) {
-                    Icon(
-                        imageVector = VortexIcons.Pause,
-                        contentDescription = "Pause",
-                        tint = VortexColors.SecondaryText
-                    )
-                }
-            }
-            MediaDownloadState.Paused -> {
-                IconButton(onClick = onResume) {
-                    Icon(
-                        imageVector = VortexIcons.Play,
-                        contentDescription = "Resume",
-                        tint = VortexColors.PrimaryText
-                    )
-                }
-            }
-            else -> {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = VortexIcons.Delete,
-                        contentDescription = "Delete",
-                        tint = VortexColors.MutedText
-                    )
-                }
+
+            // Always allow deleting/cancelling
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = VortexIcons.Delete,
+                    contentDescription = "Delete",
+                    tint = VortexColors.MutedText
+                )
             }
         }
     }
