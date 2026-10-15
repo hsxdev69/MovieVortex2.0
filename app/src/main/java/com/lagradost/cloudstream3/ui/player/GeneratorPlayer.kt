@@ -1182,13 +1182,22 @@ class GeneratorPlayer : FullScreenPlayer() {
                         startSource = filteredLinks.indexOfFirst { it.link == currentLinkUsed }
                         sourceIndex = startSource
 
-                        val sourcesArrayAdapter =
-                            ArrayAdapter<String>(ctx, R.layout.sort_bottom_single_choice)
+                        fun mapServerDisplayName(rawName: String?): String {
+                            if (rawName == null) return "Server"
+                            val lower = rawName.lowercase()
+                            return when {
+                                lower.contains("anivortex") || lower.contains("turbo") -> "Anivortex Turbo"
+                                lower.contains("streamflare") || lower.contains("core") || lower.contains("istream") -> "StreamFlare Core"
+                                lower.contains("moviebox") || lower.contains("rive") || lower.contains("superstream") -> "Rive Server"
+                                else -> rawName
+                            }
+                        }
 
                         sourcesArrayAdapter.addAll(filteredLinks.map { displayLink ->
                             val (link, uri) = displayLink.link
-                            val name = link?.name ?: uri?.name ?: "NULL"
-                            "$name ${Qualities.getStringByInt(link?.quality)}"
+                            val rawName = link?.name ?: uri?.name ?: "Server"
+                            val mappedName = mapServerDisplayName(rawName)
+                            "$mappedName ${Qualities.getStringByInt(link?.quality)}"
                         })
 
                         providerList.choiceMode = AbsListView.CHOICE_MODE_SINGLE
@@ -2115,7 +2124,7 @@ class GeneratorPlayer : FullScreenPlayer() {
                     }
                 }
 
-                if (meta.tvType.isAnimeOp()) isOpVisible = percentage < SKIP_OP_VIDEO_PERCENTAGE
+                isOpVisible = (position < 120_000L || percentage < SKIP_OP_VIDEO_PERCENTAGE) && duration > 180_000L
             }
         }
 
