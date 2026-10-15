@@ -186,7 +186,7 @@ class SubscriptionWorkManager(val context: Context, workerParams: WorkerParamete
                         }.putExtra(MainActivity.API_NAME_EXTRA_KEY, api.name)
 
                         val pendingIntent =
-                            PendingIntentCompat.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
+                            PendingIntentCompat.getActivity(context, 0, intent, 0, false)
 
                         val poster = ioWork {
                             savedData.posterUrl?.let { url ->

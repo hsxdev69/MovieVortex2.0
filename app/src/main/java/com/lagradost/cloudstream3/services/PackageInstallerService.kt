@@ -32,7 +32,7 @@ class PackageInstallerService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent =
-            PendingIntentCompat.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT, false)
+            PendingIntentCompat.getActivity(this, 0, intent, 0, false)
 
         NotificationCompat.Builder(this, UPDATE_CHANNEL_ID)
             .setAutoCancel(false)

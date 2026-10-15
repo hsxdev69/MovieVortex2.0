@@ -353,9 +353,6 @@ class DownloadController : ViewModel() {
         if (intId != null) {
             try {
                 DownloadQueueManager.cancelDownload(intId)
-                CloudStreamApp.context?.let { ctx ->
-                    VideoDownloadManager.deleteFileAndUpdateSettings(ctx, intId)
-                }
             } catch (e: Exception) {
                 Log.w(TAG, "Error cancelling download for id $id: ${e.message}")
             }
