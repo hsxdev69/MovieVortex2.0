@@ -123,6 +123,7 @@ class PlayerView @JvmOverloads constructor(
         fun onTimestamp(timestamp: VideoSkipStamp?) {}
         fun onTimestampSkipped(timestamp: VideoSkipStamp) {}
         fun exitedPipMode() {}
+        fun hasNextMirror(): Boolean = false
         fun hasNextEpisode(): Boolean = false
         fun nextMirror() {}
         fun onDownload(event: DownloadEvent) {}
