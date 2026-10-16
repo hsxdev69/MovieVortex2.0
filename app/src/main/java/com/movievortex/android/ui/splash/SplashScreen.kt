@@ -96,8 +96,8 @@ fun MovieVortexSplashScreen(
             ) {
                 // Title: Your Entertainment Starts Right Here Today
                 Text(
-                    text = "Your Entertainment
-Starts Right Here Today",
+                    text = """Your Entertainment
+Starts Right Here Today""",
                     color = Color.White,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -109,8 +109,8 @@ Starts Right Here Today",
 
                 // Subtitle
                 Text(
-                    text = "Discover movies, series, sports, and Originals
-Stream anytime, anywhere effortlessly.",
+                    text = """Discover movies, series, sports, and Originals
+Stream anytime, anywhere effortlessly.""",
                     color = Color(0xFF9E9EA8),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,

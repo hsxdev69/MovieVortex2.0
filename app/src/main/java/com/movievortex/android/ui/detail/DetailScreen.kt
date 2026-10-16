@@ -169,7 +169,7 @@ fun DetailScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = VortexIcons.ChevronLeft,
+                            imageVector = VortexIcons.ChevronDown,
                             contentDescription = "Back",
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
