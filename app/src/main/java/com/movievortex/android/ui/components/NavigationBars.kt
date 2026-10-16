@@ -84,14 +84,14 @@ fun MovieVortexTopBar(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(Color(0xFF1E1E24))
+                        .background(Color(0xFF244466))
                         .border(1.5.dp, Color(0x40FFFFFF), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = VortexIcons.Person,
                         contentDescription = "User Avatar",
-                        tint = Color(0xFFFFB800),
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -107,15 +107,15 @@ fun MovieVortexTopBar(
 
             Column(verticalArrangement = Arrangement.Center) {
                 Text(
-                    text = "📍 MovieVortex",
-                    color = Color(0xFFFFB800),
+                    text = "📍 New Work",
+                    color = Color(0xFF9E9EA8),
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Hello, Explorer",
+                    text = "Hello, Austin",
                     color = Color.White,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -163,8 +163,8 @@ fun MovieVortexTopBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = VortexIcons.Search,
-                    contentDescription = "Search",
+                    imageVector = VortexIcons.Tune,
+                    contentDescription = "Filter",
                     tint = Color.White,
                     modifier = Modifier.size(19.dp)
                 )

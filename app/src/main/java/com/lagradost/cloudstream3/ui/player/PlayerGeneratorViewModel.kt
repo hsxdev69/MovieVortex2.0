@@ -83,6 +83,9 @@ data class VideoState(
         hideNegativeSources: Boolean,
         hideErrorSources: Boolean
     ): DisplayLink {
+        if (this.first == null && this.second != null) {
+            return DisplayLink(this, shouldUseLink = true, priority = 9999)
+        }
         val priority = getLinkPriority(qualityProfile, this.first)
         val shouldHideLink =
             (hideNegativeSources && priority < 0) || (hideErrorSources && hasLinkErrored(this))

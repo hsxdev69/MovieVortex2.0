@@ -230,7 +230,7 @@ fun CategoryPillsRow(
     onCategorySelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val categories = listOf("Movies", "Sports", "TV Shows", "News", "Anime")
+    val categories = listOf("Movies", "Sports", "TV Shows", "News")
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
@@ -241,7 +241,7 @@ fun CategoryPillsRow(
     ) {
         items(categories) { category ->
             val isSelected = category == selectedCategory
-            val bgColor = if (isSelected) Color(0xFFFFB800) else Color(0x33252528)
+            val bgColor = if (isSelected) VortexColors.GoldenAmber else Color(0x33252528)
             val textColor = if (isSelected) Color.Black else Color(0xFFE2E2E6)
             val borderModifier = if (isSelected) {
                 Modifier
@@ -342,7 +342,7 @@ fun FeaturedHero(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFFFB800))
+                        .background(VortexColors.GoldenAmber)
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
@@ -397,7 +397,7 @@ fun FeaturedHero(
                 )
                 Text(
                     text = "★ %.1f".format(activeItem.rating ?: 8.2f),
-                    color = Color(0xFFFFB800),
+                    color = VortexColors.GoldenAmber,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -424,7 +424,7 @@ fun FeaturedHero(
                     // Golden Amber Watch Now button (Figma Screenshot_20261015_194137.jpg)
                     Button(
                         onClick = { onPlayClick(activeItem) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB800)),
+                        colors = ButtonDefaults.buttonColors(containerColor = VortexColors.GoldenAmber),
                         shape = RoundedCornerShape(24.dp),
                         contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp)
                     ) {
@@ -474,7 +474,7 @@ fun FeaturedHero(
                                 .width(if (isIndicatorActive) 16.dp else 6.dp)
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp))
-                                .background(if (isIndicatorActive) Color(0xFFFFB800) else Color(0x66FFFFFF))
+                                .background(if (isIndicatorActive) VortexColors.GoldenAmber else Color(0x66FFFFFF))
                         )
                     }
                 }
@@ -601,14 +601,14 @@ fun ContentRowSection(
             ) {
                 Text(
                     text = "See All",
-                    color = Color(0xFFFFB800),
+                    color = VortexColors.GoldenAmber,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Icon(
                     imageVector = VortexIcons.ChevronRight,
                     contentDescription = "See All",
-                    tint = Color(0xFFFFB800),
+                    tint = VortexColors.GoldenAmber,
                     modifier = Modifier.size(14.dp)
                 )
             }

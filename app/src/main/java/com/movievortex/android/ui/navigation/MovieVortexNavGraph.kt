@@ -81,20 +81,28 @@ fun launchCloudStreamPlayer(
     }
 }
 
-fun launchOfflinePlayer(context: Context, localFilePath: String?) {
+fun launchOfflinePlayer(context: Context, localFilePath: String?, title: String? = null) {
     if (localFilePath.isNullOrBlank()) return
     try {
-        val file = File(localFilePath)
-        val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-            try {
-                androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-            } catch (e: Exception) {
+        val uri = if (localFilePath.startsWith("content://")) {
+            Uri.parse(localFilePath)
+        } else {
+            val file = File(localFilePath)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                try {
+                    androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                } catch (_: Exception) {
+                    Uri.fromFile(file)
+                }
+            } else {
                 Uri.fromFile(file)
             }
-        } else {
-            Uri.fromFile(file)
         }
         val intent = Intent(context, com.lagradost.cloudstream3.ui.player.DownloadedPlayerActivity::class.java).apply {
+            putExtra("OFFLINE_PATH", localFilePath)
+            if (!title.isNullOrBlank()) {
+                putExtra("TITLE", title)
+            }
             action = Intent.ACTION_VIEW
             setDataAndType(uri, "video/*")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -211,7 +219,7 @@ fun MovieVortexNavGraph(
                                         downloadController = downloadController,
                                         onBrowseClick = { currentDestination = MainDestination.MoviesTv },
                                         onPlayOffline = { item ->
-                                            launchOfflinePlayer(context, item.localFilePath)
+                                            launchOfflinePlayer(context, item.localFilePath, item.title)
                                         }
                                     )
                                 }

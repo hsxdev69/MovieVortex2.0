@@ -105,6 +105,10 @@ class HomeController : ViewModel() {
                     }
                 }
 
+                if (rows.isNotEmpty()) {
+                    rows[0] = rows[0].copy(title = "Peacock Picks")
+                }
+
                 // Populate Hero from first rows if available
                 rows.firstOrNull()?.items?.take(5)?.let {
                     heroList.addAll(it)

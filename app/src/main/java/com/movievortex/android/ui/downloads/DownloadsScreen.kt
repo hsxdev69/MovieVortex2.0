@@ -153,12 +153,14 @@ fun DownloadItemCard(
     onDelete: () -> Unit,
     onPlay: () -> Unit
 ) {
+    val isCompleted = item.state == MediaDownloadState.Completed
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(VortexColors.CardSurface)
             .border(1.dp, VortexColors.BorderSubtle, RoundedCornerShape(12.dp))
+            .clickable(enabled = isCompleted) { onPlay() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -283,7 +285,7 @@ fun DownloadItemCard(
             if (item.state == MediaDownloadState.Downloading || item.state == MediaDownloadState.Paused) {
                 LinearProgressIndicator(
                     progress = { item.progress },
-                    color = VortexColors.CinematicRed,
+                    color = Color(0xFFFFB800),
                     trackColor = VortexColors.SkeletonDark,
                     modifier = Modifier
                         .fillMaxWidth()

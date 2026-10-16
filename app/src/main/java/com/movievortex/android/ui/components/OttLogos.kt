@@ -340,3 +340,86 @@ fun DefaultOttLogo(name: String, modifier: Modifier = Modifier) {
         )
     }
 }
+
+
+@Composable
+fun DisneyPlusBadgeCard(
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(105.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF091C3E))
+            .border(1.dp, Color(0x334B7BEC), RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Disney",
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+            Text(
+                text = "+",
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
+
+@Composable
+fun NetflixBadgeCard(
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(105.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "NETFLIX",
+            color = Color(0xFFE50914),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+fun PrimeVideoBadgeCard(
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(105.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF071E34))
+            .border(1.dp, Color(0x3300A8E1), RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "prime video",
+            color = Color(0xFF00A8E1),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}

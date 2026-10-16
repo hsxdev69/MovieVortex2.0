@@ -1,6 +1,10 @@
 package com.lagradost.cloudstream3.ui.player
 
 import android.content.Intent
+import android.net.Uri
+import java.io.File
+import androidx.navigation.fragment.NavHostFragment
+import com.lagradost.safefile.SafeFile
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
@@ -96,6 +100,13 @@ class DownloadedPlayerActivity : AppCompatActivity() {
             return
         }
 
+        val offlinePath = intent.getStringExtra("OFFLINE_PATH")
+        val offlineTitle = intent.getStringExtra("TITLE")
+        if (!offlinePath.isNullOrBlank()) {
+            playOfflineDirect(offlinePath, offlineTitle)
+            return
+        }
+
         val data = intent.data
         if (OfflinePlaybackHelper.playIntent(activity = this, intent = intent)) {
             return
@@ -111,15 +122,72 @@ class DownloadedPlayerActivity : AppCompatActivity() {
             val item = if (cd != null && cd.itemCount > 0) cd.getItemAt(0) else null
             val url = item?.text?.toString()
             when {
-                item?.uri != null -> playUri(this, item.uri)
+                item?.uri != null -> playUriSafely(item.uri)
                 url != null -> playLink(this, url)
-                data != null -> playUri(this, data)
+                data != null -> playUriSafely(data)
                 extraText != null -> playLink(this, extraText)
                 else -> finish()
             }
         } else if (data?.scheme == "content") {
-            playUri(this, data)
+            playUriSafely(data)
         } else finish()
+    }
+
+    private fun playOfflineDirect(path: String, title: String?) {
+        val uri = if (path.startsWith("content://")) {
+            Uri.parse(path)
+        } else {
+            Uri.fromFile(File(path))
+        }
+        val displayName = title ?: (if (!path.startsWith("content://")) File(path).nameWithoutExtension.replace("_", " ") else "Downloaded Movie")
+        val extractorUri = ExtractorUri(
+            uri = uri,
+            name = displayName,
+            id = path.hashCode()
+        )
+        val args = GeneratorPlayer.newInstance(
+            DownloadFileGenerator(listOf(extractorUri)),
+            0
+        )
+        navigateToPlayer(args)
+    }
+
+    private fun playUriSafely(uri: Uri) {
+        val name = SafeFile.fromUri(this, uri)?.name() ?: uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.') ?: "Downloaded Video"
+        val extractorUri = ExtractorUri(
+            uri = uri,
+            name = name,
+            id = uri.hashCode()
+        )
+        val args = GeneratorPlayer.newInstance(
+            DownloadFileGenerator(listOf(extractorUri)),
+            0
+        )
+        navigateToPlayer(args)
+    }
+
+    private fun navigateToPlayer(args: Bundle) {
+        val navOptions = NavOptions.Builder()
+            .setPopUpTo(R.id.navigation_player, inclusive = true, saveState = false)
+            .build()
+        window.decorView.post {
+            try {
+                val navHost = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as? NavHostFragment
+                val navController = navHost?.navController
+                if (navController != null) {
+                    navController.navigate(R.id.global_to_navigation_player, args, navOptions)
+                } else {
+                    this.navigate(R.id.global_to_navigation_player, args, navOptions)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error navigating to player fragment", e)
+                try {
+                    this.navigate(R.id.global_to_navigation_player, args)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Fallback navigation failed", t)
+                }
+            }
+        }
     }
 
     private fun playProviderContent(apiName: String, url: String, intent: Intent) {
